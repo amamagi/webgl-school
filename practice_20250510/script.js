@@ -175,17 +175,20 @@ class ThreeApp{
                 const mesh = this.meshes2d[i][j];
 
                 // rotation animation
-                mesh.rotation.y = Math.sin(t * 2);
-                mesh.rotation.x = t * i * 0.01;
-                mesh.rotation.z = t * j * 0.01;
+                //mesh.rotation.z = Math.sin(t * 2);
+                const xC = mesh.position.x < 0 ? - (10 + mesh.position.x) : 10 - mesh.position.x;
+                const yC = mesh.position.y < 0 ? - (10 + mesh.position.y) : 10 - mesh.position.y;
+
+                mesh.rotation.x = t * xC / 8;
+                mesh.rotation.y = t * yC / 8;
                 
                 // z animation
-                const SPEED = 1;
-                const AMP = 1.5;
+                const SPEED = 0.8;
+                const AMP = 1;
                 const x = mesh.position.x;
                 const y = mesh.position.y;
                 const z = Math.sin(- t * SPEED + new THREE.Vector2(x, y).length()) * AMP;
-                const z2 = Math.sign(z) * z * z;
+                const z2 = Math.pow(z, 10);
                 mesh.position.z = z2;
             }
         }
