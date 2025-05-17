@@ -1,4 +1,5 @@
 import * as THREE from '../lib/three.module.js'
+import {  OrbitControls } from '../lib/OrbitControls.js'
 
 window.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.querySelector('#webgl');
@@ -53,6 +54,7 @@ class ThreeApp{
     directionalLight;
     ambientLight;
     material;
+    control;
 
     /** @type {THREE.Mesh[][]}*/
     meshes2d;
@@ -135,6 +137,8 @@ class ThreeApp{
 
         this.clock = new THREE.Clock();
 
+        this.control = new OrbitControls(this.camera, this.renderer.domElement);
+
         // this.scene.add(new THREE.AxesHelper());
 
         // ウィンドウのリサイズを検出できるようにする
@@ -192,6 +196,8 @@ class ThreeApp{
                 mesh.position.z = z2;
             }
         }
+
+        this.control.update();
 
        this.renderer.render(this.scene, this.camera);
     }
