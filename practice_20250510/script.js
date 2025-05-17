@@ -60,8 +60,6 @@ class ThreeApp{
     /** @type {THREE.Clock} */
     clock;
 
-    patternFlag = false;
-
     /**
      * @constructor
      * @param {HTMLElement} wrapper - canvas 要素を append する親要素
@@ -145,11 +143,6 @@ class ThreeApp{
             this.setCameraSize(this.calculateCameraSize());
             this.camera.updateProjectionMatrix();
         }, false);
-
-        // クリックでパターン切り替え
-        window.addEventListener('click', (ev)=> {
-            this.patternFlag = this.patternFlag ? false : true;
-        }, false)
     }
 
     calculateCameraSize(){
