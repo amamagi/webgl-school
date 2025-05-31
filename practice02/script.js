@@ -126,22 +126,28 @@ class ThreeApp{
         // 首オブジェクト
         this.neckRoot = new THREE.Group();
         this.neckRoot.position.y = pillerHeight;
-        this.neckRoot.rotation.x = Math.PI * - 0.1;
+        this.objectsRoot.add(this.neckRoot);
+        
+        const neckWrapper = new THREE.Group()
+        neckWrapper.rotation.x = Math.PI * - 0.1;
+        this.neckRoot.add(neckWrapper);
+
         const neckLength = 0.4;
         const axisLength = 0.1;
         const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, neckLength), material);
         neck.rotation.x = this.degToRad(90);
-        this.neckRoot.add(neck);
+        neckWrapper.add(neck);
+
         const axis = new THREE.Mesh(new THREE.CylinderGeometry(0, 0.15, axisLength), material);
         axis.rotation.x = this.degToRad(90);
         axis.position.z = neckLength / 2 + axisLength / 2;
-        this.neckRoot.add(axis);
-        this.objectsRoot.add(this.neckRoot);
+        neckWrapper.add(axis);
 
         // 羽オブジェクト
         this.fanRoot = new THREE.Group();
         const fanMaterial = new THREE.MeshStandardMaterial(ThreeApp.MATERIAL_PARAM);
         fanMaterial.side = 2;
+
         for (var i = 0; i < 4; i++){
             const shape = new THREE.Shape();
             const x = 0, y = 0;
@@ -165,7 +171,7 @@ class ThreeApp{
             this.fanRoot.add(bladeWrapper);
         }
         this.fanRoot.position.set(0, 0, neckLength / 2 + axisLength);
-        this.neckRoot.add(this.fanRoot);
+        neckWrapper.add(this.fanRoot);
     }
 
     calculateNeckRotation(t){
