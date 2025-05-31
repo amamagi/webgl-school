@@ -129,7 +129,7 @@ class ThreeApp{
         this.objectsRoot.add(this.neckRoot);
         
         const neckWrapper = new THREE.Group()
-        neckWrapper.rotation.x = Math.PI * - 0.1;
+        neckWrapper.rotation.x = this.degToRad(-10)
         this.neckRoot.add(neckWrapper);
 
         const neckLength = 0.4;
