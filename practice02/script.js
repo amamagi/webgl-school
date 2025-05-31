@@ -11,11 +11,11 @@ window.addEventListener('DOMContentLoaded', () => {
 class ThreeApp{
     /** カメラ定義のための定数 */ 
     static CAMERA_PARAM = {
-        fov: 60,
+        fov: 40,
         near: 1,
         far: 100,
-        position: new THREE.Vector3(-2, 2, 3),
-        lookAt: new THREE.Vector3(0, 1, 0)
+        position: new THREE.Vector3(-2, 1.2, 3),
+        lookAt: new THREE.Vector3(0, 0.9, 0)
     };
 
     /** レンダラー定義のための定数 */
