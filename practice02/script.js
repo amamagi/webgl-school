@@ -204,7 +204,7 @@ class ThreeApp{
             this.fanRoot.rotation.z = -this.clock.getElapsedTime() * fanSpeed;
         }
 
-        //this.control.update();
+        this.control.update();
 
         this.renderer.render(this.scene, this.camera);
     }
