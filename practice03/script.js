@@ -239,7 +239,7 @@ class ThreeApp{
         this.control = new OrbitControls(this.camera, this.renderer.domElement);
         this.control.target = ThreeApp.CAMERA_PARAM.lookAt;
         this.control.autoRotate = true;
-        this.control.autoRotateSpeed = 0.8;
+        this.control.autoRotateSpeed = 2;
 
         // クロック
         this.clock = new THREE.Clock();
@@ -254,8 +254,8 @@ class ThreeApp{
     }
 
     animation(){
-        this.targetVector.x = Math.sin(-this.clock.getElapsedTime() * 0.2);
-        this.targetVector.z = Math.cos(-this.clock.getElapsedTime() * 0.2);
+        this.targetVector.x = Math.sin(-this.clock.getElapsedTime() * 0.21);
+        this.targetVector.z = Math.cos(-this.clock.getElapsedTime() * 0.21);
         this.targetVector.y = Math.sin(this.clock.getElapsedTime() * 0.2) * 0.5;
         this.targetVector.normalize().multiplyScalar(this.planeDistance);
         // this.target.position.set(this.targetVector.x, this.targetVector.y, this.targetVector.z);
@@ -280,11 +280,16 @@ class ThreeApp{
         this.prevPosition = this.plane.position.clone();
     }
 
+    now = performance.now();
+
     /** 描画処理 */
     render() {
         requestAnimationFrame(this.render);
         this.animation();
-        this.control.update();
+        // clock.getDelta()は精度が悪かったので使ってない
+        const delta = (performance.now() - this.now) / 1000;
+        this.now = performance.now();
+        this.control.update(delta);
         this.renderer.render(this.scene, this.camera);
     }
 
