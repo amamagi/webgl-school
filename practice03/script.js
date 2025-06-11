@@ -16,12 +16,12 @@ class ThreeApp{
         fov: 40,
         near: 0.1,
         far: 100,
-        position: new THREE.Vector3(0, 0, 3.5),
+        position: new THREE.Vector3(0, 0, 3),
         lookAt: new THREE.Vector3(0, 0, 0)
     };
     /** レンダラー定義のための定数 */
     static RENDERER_PARAM = {
-        clearColor: 0xeeeeee,
+        clearColor: 0x000000,
         width: window.innerWidth,
         height: window.innerHeight
     };
@@ -46,17 +46,17 @@ class ThreeApp{
         roughness: 1
     };
     static PLANE_BODY_MATERIAL_PARAM = {
-        color: 0xffae24,
+        color: 0xdddddd,
         roughness: 1
     };
     static PLANE_WING_MATERIAL_PARAM = {
-        color: 0xffae24,
+        color: 0xdddddd,
         side: THREE.DoubleSide,
         roughness: 1
     };
     /** メッシュ定義のための定数 */
     static EARTH_MESH_PARM = {
-        radius: 1,
+        radius: 0.8,
         widthSegment: 32,
         heightSegment: 32
     };
@@ -64,9 +64,9 @@ class ThreeApp{
      * フォグの定義のための定数
      */
     static FOG_PARAM = {
-        color: 0xeeeeee,
-        near: 2.7,
-        far: 3.3,
+        color: 0x000000,
+        near: 2.4,
+        far: 2.8,
     };
 
     wrapper;
@@ -88,7 +88,7 @@ class ThreeApp{
     /** @type {THREE.Object3D} */
     target;
 
-    planeDistance = ThreeApp.EARTH_MESH_PARM.radius + 0.03;
+    planeDistance = ThreeApp.EARTH_MESH_PARM.radius + 0.1;
     targetVector = new THREE.Vector3();
     prevPosition = new THREE.Vector3();
 
