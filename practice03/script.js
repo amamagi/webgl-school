@@ -16,7 +16,7 @@ class ThreeApp{
         fov: 40,
         near: 0.1,
         far: 100,
-        position: new THREE.Vector3(0, 0, 3),
+        position: new THREE.Vector3(0, 0, 3.5),
         lookAt: new THREE.Vector3(0, 0, 0)
     };
     /** レンダラー定義のための定数 */
@@ -38,18 +38,21 @@ class ThreeApp{
      */
     static AMBIENT_LIGHT_PARAM = {
         color: 0xffffff,
-        intensity: 0.5,
+        intensity: 0.3,
     };
     /** マテリアル定義のための定数 */
     static MATERIAL_PARAM = {
         color: 0xffffff,
+        roughness: 1
     };
     static PLANE_BODY_MATERIAL_PARAM = {
-        color: 0xd4e9ff,
+        color: 0xffae24,
+        roughness: 1
     };
     static PLANE_WING_MATERIAL_PARAM = {
-        color: 0xd4e9ff,
-        side: THREE.DoubleSide
+        color: 0xffae24,
+        side: THREE.DoubleSide,
+        roughness: 1
     };
     /** メッシュ定義のための定数 */
     static EARTH_MESH_PARM = {
@@ -61,14 +64,12 @@ class ThreeApp{
      * フォグの定義のための定数
      */
     static FOG_PARAM = {
-        color: 0xffffff,
-        near: 10.0,
-        far: 20.0,
+        color: 0xeeeeee,
+        near: 2.7,
+        far: 3.3,
     };
 
-
     wrapper;
-
     renderer;
     scene;
     camera;
@@ -163,8 +164,8 @@ class ThreeApp{
             ThreeApp.FOG_PARAM.far,
         )
 
-        // const pmremGenerator = new THREE.PMREMGenerator( this.renderer );
-        // this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment()).texture;
+        const pmremGenerator = new THREE.PMREMGenerator( this.renderer );
+        this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment()).texture;
 
         // カメラ
         this.camera = new THREE.PerspectiveCamera(
@@ -178,18 +179,18 @@ class ThreeApp{
         this.scene.add(this.camera);		
 
         // ディレクショナルライト
-        this.directionalLight = new THREE.DirectionalLight(
-            ThreeApp.DIRECTIONAL_LIGHT_PARAM.color,
-            ThreeApp.DIRECTIONAL_LIGHT_PARAM.intensity
-        )
-        this.scene.add(this.directionalLight);
+        // this.directionalLight = new THREE.DirectionalLight(
+        //     ThreeApp.DIRECTIONAL_LIGHT_PARAM.color,
+        //     ThreeApp.DIRECTIONAL_LIGHT_PARAM.intensity
+        // )
+        // this.scene.add(this.directionalLight);
 
         // アンビエントライト
-        this.ambientLight = new THREE.AmbientLight(
-            ThreeApp.AMBIENT_LIGHT_PARAM.color,
-            ThreeApp.AMBIENT_LIGHT_PARAM.intensity
-        )
-        this.scene.add(this.ambientLight);
+        // this.ambientLight = new THREE.AmbientLight(
+        //     ThreeApp.AMBIENT_LIGHT_PARAM.color,
+        //     ThreeApp.AMBIENT_LIGHT_PARAM.intensity
+        // )
+        // this.scene.add(this.ambientLight);
 
         // 地球
         const earthGeometry = new THREE.SphereGeometry(
@@ -197,14 +198,14 @@ class ThreeApp{
             ThreeApp.EARTH_MESH_PARM.widthSegments,
             ThreeApp.EARTH_MESH_PARM.heightSegment,
         );
-        const earthMaterial = new THREE.MeshPhongMaterial(ThreeApp.MATERIAL_PARAM);
+        const earthMaterial = new THREE.MeshStandardMaterial(ThreeApp.MATERIAL_PARAM);
         earthMaterial.map = this.earthTexture;
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.scene.add(this.earth);
 
         // 飛行機
-        const planeBodyMaterial = new THREE.MeshPhongMaterial(ThreeApp.PLANE_BODY_MATERIAL_PARAM);
-        const planeWingMaterial = new THREE.MeshPhongMaterial(ThreeApp.PLANE_WING_MATERIAL_PARAM);
+        const planeBodyMaterial = new THREE.MeshStandardMaterial(ThreeApp.PLANE_BODY_MATERIAL_PARAM);
+        const planeWingMaterial = new THREE.MeshStandardMaterial(ThreeApp.PLANE_WING_MATERIAL_PARAM);
         const planeBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.1), planeBodyMaterial);
         const planeWing = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.02), planeWingMaterial)
         const planeTailWing = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.01), planeWingMaterial)
@@ -240,6 +241,7 @@ class ThreeApp{
         this.control.target = ThreeApp.CAMERA_PARAM.lookAt;
         this.control.autoRotate = true;
         this.control.autoRotateSpeed = 2;
+        this.control.enableZoom = false;
 
         // クロック
         this.clock = new THREE.Clock();
