@@ -18,6 +18,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     culling: true,
     depthTest: true,
     rotation: false,
+    x: app.pointLightPosition[0],
+    y: app.pointLightPosition[1],
+    z: app.pointLightPosition[2],
+    maxDistance: app.maxLightDistance
   };
   // バックフェイスカリングの有効・無効
   pane.addBinding(parameter, 'culling')
@@ -33,6 +37,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   pane.addBinding(parameter, 'rotation')
   .on('change', (v) => {
     app.setRotation(v.value);
+  });
+
+  // 点光源の設定
+  const pl = pane.addFolder({
+    title: 'PointLight',
+    expanded: true
+  });
+  pl.addBinding(parameter, 'x', {min: -10, max: 10, step: 0.01})
+  .on('change', (v) => {
+    const y = app.pointLightPosition[1];
+    const z = app.pointLightPosition[2];
+    app.setPointLightPosition(v.value, y, z);
+  });
+  pl.addBinding(parameter, 'y', {min: -10, max: 10, step: 0.01})
+  .on('change', (v) => {
+    const x = app.pointLightPosition[0];
+    const z = app.pointLightPosition[2];
+    app.setPointLightPosition(x, v.value, z);
+  });
+  pl.addBinding(parameter, 'z', {min: -10, max: 10, step: 0.01})
+  .on('change', (v) => {
+    const x = app.pointLightPosition[0];
+    const y = app.pointLightPosition[1];
+    app.setPointLightPosition(x, y, v.value);
+  });
+  pl.addBinding(parameter, 'maxDistance', {min: 0, max: 10})
+  .on('change', (v) => {
+    app.setMaxLightDistance(v.value);
   });
 }, false);
 
@@ -53,11 +85,34 @@ class App {
   isRendering;       // レンダリングを行うかどうかのフラグ
   isRotation;        // オブジェクトを Y 軸回転させるかどうか
   camera;            // WebGLOrbitCamera のインスタンス
+  pointLightPosition; // 点光源の位置
+  maxLightDistance;   // 点光源の照射範囲
 
   constructor() {
     // this を固定するためのバインド処理
     this.resize = this.resize.bind(this);
     this.render = this.render.bind(this);
+    this.pointLightPosition = Vec3.create(1, 1, 0);
+    this.maxLightDistance = 3.0;
+  }
+
+  /**
+   * 点光源の位置を設定する
+   * @param {float} x - x座標
+   * @param {float} y - y座標
+   * @param {float} z - z座標
+   *  
+   */
+  setPointLightPosition(x, y, z){
+      this.pointLightPosition = Vec3.create(x, y, z);
+  }
+
+  /**
+   * 点光源の照射範囲を設定する
+   * @param {float} value - 照射範囲
+   */
+  setMaxLightDistance(value){
+    this.maxLightDistance = value;
   }
 
   /**
@@ -204,6 +259,8 @@ class App {
     this.uniformLocation = {
       mvpMatrix: gl.getUniformLocation(this.program, 'mvpMatrix'),
       normalMatrix: gl.getUniformLocation(this.program, 'normalMatrix'), // 法線変換行列 @@@
+      pointLightPosition: gl.getUniformLocation(this.program, 'pointLightPosition'), // 点光源の位置
+      maxLightDistance: gl.getUniformLocation(this.program, 'maxLightDistance'), // 点光源の照射範囲
     };
   }
 
@@ -282,6 +339,8 @@ class App {
     gl.useProgram(this.program);
     gl.uniformMatrix4fv(this.uniformLocation.mvpMatrix, false, mvp);
     gl.uniformMatrix4fv(this.uniformLocation.normalMatrix, false, normalMatrix);
+    gl.uniform3fv(this.uniformLocation.pointLightPosition, this.pointLightPosition);
+    gl.uniform1f(this.uniformLocation.maxLightDistance, this.maxLightDistance);
 
     // VBO と IBO を設定し、描画する
     WebGLUtility.enableBuffer(gl, this.torusVBO, this.attributeLocation, this.attributeStride, this.torusIBO);
