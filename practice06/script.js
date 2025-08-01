@@ -258,6 +258,7 @@ class App {
     // uniform location の取得
     this.uniformLocation = {
       mvpMatrix: gl.getUniformLocation(this.program, 'mvpMatrix'),
+      mMatrix: gl.getUniformLocation(this.program, 'mMatrix'),
       normalMatrix: gl.getUniformLocation(this.program, 'normalMatrix'), // 法線変換行列 @@@
       pointLightPosition: gl.getUniformLocation(this.program, 'pointLightPosition'), // 点光源の位置
       maxLightDistance: gl.getUniformLocation(this.program, 'maxLightDistance'), // 点光源の照射範囲
@@ -338,6 +339,7 @@ class App {
     // プログラムオブジェクトを選択し uniform 変数を更新する @@@
     gl.useProgram(this.program);
     gl.uniformMatrix4fv(this.uniformLocation.mvpMatrix, false, mvp);
+    gl.uniformMatrix4fv(this.uniformLocation.mMatrix, false, m);
     gl.uniformMatrix4fv(this.uniformLocation.normalMatrix, false, normalMatrix);
     gl.uniform3fv(this.uniformLocation.pointLightPosition, this.pointLightPosition);
     gl.uniform1f(this.uniformLocation.maxLightDistance, this.maxLightDistance);
