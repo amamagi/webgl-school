@@ -115,8 +115,8 @@ class App {
         // 画像を読み込み、テクスチャを初期化する @@@
         const image0 = await WebGLUtility.loadImage('../textures/ehho.png');
         const image1 = await WebGLUtility.loadImage('../textures/doge.png');
-        this.textures[0] = WebGLUtility.createTexture(gl, image0, gl.TEXTURE0);
-        this.textures[1] = WebGLUtility.createTexture(gl, image1, gl.TEXTURE1);
+        this.textures[0] = WebGLUtility.createTexture(gl, image0);
+        this.textures[1] = WebGLUtility.createTexture(gl, image1);
 
         // Promsie を解決
         resolve();
