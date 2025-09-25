@@ -10,6 +10,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   await app.load();
   app.setupGeometry();
   app.setupLocation();
+  app.initializeBuffer(); // バッファに初期状態をセット @@@
   app.start();
 }, false);
 
@@ -20,8 +21,10 @@ class App {
   canvas;            // WebGL で描画を行う canvas 要素
   gl;                // WebGLRenderingContext （WebGL コンテキスト）
   program;           // WebGLProgram （プログラムオブジェクト）
-  solverProgram;  // ジャコビ反復計算用のプログラムオブジェクト @@@
-  blitProgram;    // フレームバッファの内容を画面に描画するためのプログラムオブジェクト @@@
+  solverProgram;  // ジャコビ反復計算用のプログラムオブジェクト
+  advectionProgram; // アドベクション用のプログラムオブジェクト
+  perlinProgram; // パーリンノイズ用のプログラムオブジェクト
+  blitProgram;    // フレームバッファの内容を画面に描画するためのプログラムオブジェクト
   attributeLocations = []; // attribute 変数のロケーション
   attributeStride;   // attribute 変数のストライド
   uniformLocations = [];   // uniform 変数のロケーション
@@ -29,16 +32,22 @@ class App {
   planeVBO;          // 板ポリゴンの頂点バッファ
   planeIBO;          // 板ポリゴンのインデックスバッファ
   startTime;         // レンダリング開始時のタイムスタンプ
-  prevTime;       // 前回のフレームの時間
-  prevBuffer;       // 前回のフレームのフレームバッファ @@@
-  bufferA;         // フレームバッファ A @@@
-  bufferB;         // フレームバッファ B @@@
-  bufferC;         // フレームバッファ C @@@
-  shouldTargetA;      // 現在の描画ターゲットが bufferA にするかどうかのフラグ @@@
-  initialBuffer; // 初期状態のフレームバッファ @@@
-  initialized = false; // 初期状態をセットしたかどうかのフラグ @@@
-  timeScale = 1; // 時間の進む速さ @@@
-  frameCount = 0; // フレーム数カウンター @@@
+  shouldTargetA;      // 現在の描画ターゲットが bufferA にするかどうかのフラグ
+  initialized = false; // 初期状態をセットしたかどうかのフラグ
+  initialTexture; // dyeの初期状態
+  quadMvpMatrix; // 板ポリゴン描画用の MVP 行列
+
+  // --- buffer ---
+  velocityBuffer; // 速度場 (RG16) (一旦RGBA32)
+  velocityBufferTemp; // 速度場一時バッファ (RG16) (一旦RGBA32)
+  velocityDivergenceBuffer; // 速度場の発散を格納するバッファ
+  pressureBuffer;   // 圧力場 (R16) (一旦RGBA32)
+  dyeBuffer;      // 染料場 (R8)   (一旦RGBA32)
+  dyeBufferTemp;  // 染料場一時バッファ (R8) (一旦RGBA32)
+  tempRG16BufferA;   // RG16一時バッファA (一旦RGBA32)
+  tempRG16BufferB;   // RG16一時バッファB (一旦RGBA32)
+  tempR8BufferA;    // R8一時バッファA (一旦RGBA32)
+  tempR8BufferB;    // R8一時バッファB (一旦RGBA32)
 
   constructor() {
     // this を固定するためのバインド処理
@@ -74,6 +83,8 @@ class App {
 
     // 深度テストは初期状態で有効
     this.gl.enable(this.gl.DEPTH_TEST);
+
+    this.quadMvpMatrix = this.calcMvp();
 
   }
 
@@ -140,27 +151,39 @@ class App {
         const fragmentShader = WebGLUtility.createShaderObject(gl, FSSource, gl.FRAGMENT_SHADER);
         this.program = WebGLUtility.createProgramObject(gl, vertexShader, fragmentShader);
 
-        const solverFSource = await WebGLUtility.loadFile('./fluid.frag');
+        const solverFSource = await WebGLUtility.loadFile('./jaccobi_solver.frag');
         const solverVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
         const solverFShader = WebGLUtility.createShaderObject(gl, solverFSource, gl.FRAGMENT_SHADER);
         this.solverProgram = WebGLUtility.createProgramObject(gl, solverVShader, solverFShader);
+
+        const advectionFSource = await WebGLUtility.loadFile('./advection.frag');
+        const advectionVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const advectionFShader = WebGLUtility.createShaderObject(gl, advectionFSource, gl.FRAGMENT_SHADER);
+        this.advectionProgram = WebGLUtility.createProgramObject(gl, advectionVShader, advectionFShader);
 
         const blitFSource = await WebGLUtility.loadFile('./blit.frag');
         const blitVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
         const blitFShader = WebGLUtility.createShaderObject(gl, blitFSource, gl.FRAGMENT_SHADER);
         this.blitProgram = WebGLUtility.createProgramObject(gl, blitVShader, blitFShader);
 
+        const perlinFSource = await WebGLUtility.loadFile('./perlin.frag');
+        const perlinVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const perlinFShader = WebGLUtility.createShaderObject(gl, perlinFSource, gl.FRAGMENT_SHADER);
+        this.perlinProgram = WebGLUtility.createProgramObject(gl, perlinVShader, perlinFShader);
+
         // フレームバッファを生成する @@@
         // リサイズが完了してからフレームバッファを作成
         this.resize(); // サイズを再設定
-        this.prevBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.bufferA = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.bufferB = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.bufferC = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+        this.velocityBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+        this.dyeBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+        this.tempRG16BufferA = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+        this.tempRG16BufferB = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+        this.tempR8BufferA = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+        this.tempR8BufferB = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
         this.shouldTargetA = true;
 
         await WebGLUtility.loadImage('../textures/earth.jpg').then((image) => {
-          this.initialBuffer = WebGLUtility.createTexture(gl, image);
+          this.initialTexture = WebGLUtility.createTexture(gl, image);
         });
 
         // Promise を解決
@@ -193,21 +216,16 @@ class App {
    */
   setupLocation() {
     const gl = this.gl;
+    // --- attribute ---
     // attribute location の取得
-    const solver = this.solverProgram;
-    const blit = this.blitProgram;
-    this.attributeLocations[0] = [
-      gl.getAttribLocation(solver, 'position'),
-      gl.getAttribLocation(solver, 'normal'),
-      gl.getAttribLocation(solver, 'color'),
-      gl.getAttribLocation(solver, 'texCoord'), // テクスチャ座標 @@@
-    ];
-    this.attributeLocations[1] = [
-      gl.getAttribLocation(blit, 'position'),
-      gl.getAttribLocation(blit, 'normal'),
-      gl.getAttribLocation(blit, 'color'),
-      gl.getAttribLocation(blit, 'texCoord'), // テクスチャ座標 @@@
-    ];
+    for (program of [this.solverProgram, this.blitProgram, this.perlinProgram, this.advectionProgram]) {
+      this.attributeLocations[program] = {
+        position: gl.getAttribLocation(program, 'position'),
+        normal: gl.getAttribLocation(program, 'normal'),
+        color: gl.getAttribLocation(program, 'color'),
+        texCoord: gl.getAttribLocation(program, 'texCoord'), // テクスチャ座標 @@@
+      };
+    };
     // attribute のストライド
     this.attributeStride = [
       3,
@@ -215,21 +233,29 @@ class App {
       4,
       2, // ストライドは２ @@@
     ];
+
+    // --- uniform ---
     // uniform location の取得
-    this.uniformLocations[0] = {
-      mvpMatrix: gl.getUniformLocation(solver, 'mvpMatrix'),
-      time: gl.getUniformLocation(solver, 'u_time'),
-      resolution: gl.getUniformLocation(solver, 'u_resolution'),
-      bufferTexture: gl.getUniformLocation(solver, 'u_bufferTexture'),
-      centerFactor: gl.getUniformLocation(solver, 'u_centerFactor'),
-      beta: gl.getUniformLocation(solver, 'u_beta'),
-      initialTexture: gl.getUniformLocation(solver, 'u_initialTexture'),
-    };
-    this.uniformLocations[1] = {
-      mvpMatrix: gl.getUniformLocation(blit, 'mvpMatrix'),
-      resolution: gl.getUniformLocation(blit, 'u_resolution'),
-      bufferTexture: gl.getUniformLocation(blit, 'u_bufferTexture'),
-    };
+    for (program of [this.solverProgram, this.blitProgram, this.perlinProgram, this.advectionProgram]) {
+      this.uniformLocations[program] = {
+        time: gl.getUniformLocation(program, 'u_time'),
+        resolution: gl.getUniformLocation(program, 'u_resolution'),
+      };
+    }
+    Object.assign(this.uniformLocations[this.solverProgram], {
+      bufferTexture: gl.getUniformLocation(this.solverProgram, 'u_bufferTexture'),
+      centerFactor: gl.getUniformLocation(this.solverProgram, 'u_centerFactor'),
+      beta: gl.getUniformLocation(this.solverProgram, 'u_beta'),
+      initialTexture: gl.getUniformLocation(this.solverProgram, 'u_initialTexture'),
+    });
+    Object.assign(this.uniformLocations[this.blitProgram], {
+      bufferTexture: gl.getUniformLocation(this.blitProgram, 'u_bufferTexture'),
+    });
+    Object.assign(this.uniformLocations[this.advectionProgram], {
+      velocityTexture: gl.getUniformLocation(this.advectionProgram, 'u_velocityTexture'),
+      sourceTexture: gl.getUniformLocation(this.advectionProgram, 'u_textureToAdvect'),
+      dissapation: gl.getUniformLocation(this.advectionProgram, 'u_dissapationFactor'),
+    });
   }
 
   /**
@@ -295,15 +321,134 @@ class App {
     // const normalMatrix = Mat4.transpose(Mat4.inverse(m));
   }
 
+  initializeBuffer() {
+    if( this.initialized ) return;
+    const gl = this.gl;
+
+    // velocityBuffer の初期化
+    let program = this.perlinProgram;
+    gl.useProgram(program);
+    this.setupRendering();
+    WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocations[program], this.attributeStride, this.planeIBO);
+    gl.uniformMatrix4fv(this.uniformLocations[program].mvpMatrix, false, this.quadMvpMatrix);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
+    gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+
+    // dyeBuffer の初期化
+    program = this.blitProgram;
+    gl.useProgram(program);
+    this.setupRendering();
+    gl.uniformMatrix4fv(this.uniformLocations[program].mvpMatrix, false, this.quadMvpMatrix);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.dyeBuffer.framebuffer);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.initialTexture);
+    gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+    
+    this.initialized = true;
+  }
+
+  diffuse(sourceBuffer, destBuffer) {
+    const gl = this.gl;
+    let program = this.solverProgram;
+    gl.useProgram(program);
+    WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocations[program], this.attributeStride, this.planeIBO);
+    gl.uniformMatrix4fv(this.uniformLocations[program].mvpMatrix, false, this.quadMvpMatrix);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
+
+    const itter = 10;
+    for (let i = 0; i < itter; i++) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER,
+        i == (itter - 1) ? destBuffer.framebuffer :
+        this.shouldTargetA ? this.tempRG16BufferA.framebuffer :
+        this.tempRG16BufferB.framebuffer);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.shouldTargetA ? this.tempRG16BufferB.texture : this.tempRG16BufferA.texture);
+      const Viscosity = 0.1; // 粘性係数
+      const timeStep = 1;
+      const centerFactor = 1.0 / (Viscosity * timeStep);
+      const beta = (Viscosity * timeStep) / (1.0 + 4.0 * Viscosity * timeStep);
+      gl.uniform1i(this.uniformLocations[program].initialTexture, 0);
+      gl.uniform1i(this.uniformLocations[program].bufferTexture, 1);
+      gl.uniform1f(this.uniformLocations[program].centerFactor, centerFactor);
+      gl.uniform1f(this.uniformLocations[program].beta, beta);
+      gl.uniform2fv(this.uniformLocations[program].resolution, [this.canvas.width, this.canvas.height]);
+      gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+      this.shouldTargetA = !this.shouldTargetA;
+    }
+  }
+
+  project(sourceBuffer, destBuffer) {
+    const gl = this.gl;
+
+    // --- velocity の発散をバッファーに書き出す ---
+
+
+    // --- 圧力場を0に初期化 ---
+
+    // --- Jacobi 反復計算を行う ---
+
+    // --- 発散のない速度場を生成する ---
+
+
+    let program = this.solverProgram;
+    gl.useProgram(program);
+    WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocations[program], this.attributeStride, this.planeIBO);
+    gl.uniformMatrix4fv(this.uniformLocations[program].mvpMatrix, false, this.quadMvpMatrix);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
+    const itter = 10;
+    for (let i = 0; i < itter; i++) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER,
+        i == (itter - 1) ? destBuffer.framebuffer :
+        this.shouldTargetA ? this.tempRG16BufferA.framebuffer :
+        this.tempRG16BufferB.framebuffer);
+      gl.activeTexture(gl.TEXTURE1);  
+      gl.bindTexture(gl.TEXTURE_2D, this.shouldTargetA ? this.tempRG16BufferB.texture : this.tempRG16BufferA.texture);
+      const Viscosity = 0.0; // 粘性係数
+      const timeStep = 1;
+      const centerFactor = 1.0 / (Viscosity * timeStep);
+      const beta = (Viscosity * timeStep) / (1.0 + 4.0 * Viscosity * timeStep);
+      gl.uniform1i(this.uniformLocations[program].initialTexture, 0);
+      gl.uniform1i(this.uniformLocations[program].bufferTexture, 1);
+      gl.uniform1f(this.uniformLocations[program].centerFactor, centerFactor);
+      gl.uniform1f(this.uniformLocations[program].beta, beta);
+      gl.uniform2fv(this.uniformLocations[program].resolution, [this.canvas.width, this.canvas.height]);
+      gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+      this.shouldTargetA = !this.shouldTargetA;
+    }
+  }
+
+  divergence(sourceBuffer, destBuffer) {
+  }
+
+  advect(sourceBuffer, velocityBuffer, destBuffer) {
+    const gl = this.gl;
+    const program = this.advectionProgram;
+    gl.useProgram(program);
+    WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocations[program], this.attributeStride, this.planeIBO);
+    gl.uniformMatrix4fv(this.uniformLocations[program].mvpMatrix, false, this.quadMvpMatrix);
+
+
   /**
    * レンダリングを行う
    */
   render() {
     requestAnimationFrame(this.render);
     const gl = this.gl;
-    const currentTime = performance.now() * 0.001 * this.timeScale;
-    const deltaTime = currentTime - this.prevTime;
-    this.prevTime = currentTime;
+    // const currentTime = performance.now() * 0.001 * this.timeScale;
+
+    // --- velocity ---
+    this.diffuse(this.velocityBuffer, this.velocityBufferTemp);
+    this.project(this.velocityBufferTemp, this.velocityBuffer);
+    this.advect(this.velocityBuffer, this.velocityBuffer);
+    this.project(this.velocityBuffer);
+
+    // --- dye ---
+    this.diffuse(this.dyeBuffer);
+    this.advect(this.dyeBuffer, this.velocityBuffer);
+    this.visualize(this.dyeBuffer);
+
 
     // ---------- Jacobi 反復計算を行う -------------
     gl.useProgram(this.solverProgram);
