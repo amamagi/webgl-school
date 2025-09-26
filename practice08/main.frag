@@ -4,6 +4,7 @@ precision highp int;
 out vec4 fragColor;
 uniform float u_time;
 uniform vec2 u_resolution;
+uniform sampler2D u_bufferTexture;
 int channel;
 
 //start hash
@@ -262,22 +263,23 @@ void main(){
 
     pos *= 1.0;
     
-    float v = base21(pos);
-    vec2 g = grad(pos);
-    vec3 normal = normalize(vec3(grad(pos), 1.0));
-    float lambert = dot(-normal, -light);
-    float theta = abs(atan2(normal.y, normal.x));
+    // noise
+    // float v = base21(pos);
+    // vec2 g = grad(pos);
+    // vec3 normal = normalize(vec3(grad(pos), 1.0));
+    // float lambert = dot(-normal, -light);
+    // float theta = abs(atan2(normal.y, normal.x));
 
     vec3 color;
-    // c += mix(ctable[0], ctable[1], v) * 0.6;
-    // c += pow(max(lambert, 0.0), 0.4) * ctable[1] * 1.;
+
+    float v = texture(u_bufferTexture, pos).x;
 
     vec3 r = rainbow(smoothstep(0.2, 0.8, v));// * oklch2rgb(1.0, 0.05, theta * 180.0 / PI + u_time * 10.0);
     r = pow(r, vec3(0.8));
     // color = pow(color, vec3(2.2));
     // color = rainbow(v);// + oklch2rgb(lambert, 0.1, theta * 180.0 / PI + u_time * 10.0) * 0.05;
 
-    color = mix(oklch2rgb(0.7, 0.1, 276.0), oklch2rgb(0.8, 0.06, 216.0), lambert);
+    color = mix(oklch2rgb(0.7, 0.1, 276.0), oklch2rgb(0.8, 0.06, 216.0), v);
 
     color = mix(color, r,1.0 - v) ;
     color = smoothstep(0.2, 0.8, color * 0.8);
