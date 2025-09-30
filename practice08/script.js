@@ -61,10 +61,23 @@ class App {
   isMouseDown;     // マウスが押されているかどうかのフラグ
   enableLighting = false;    // ライティングを有効にするかどうかのフラグ
 
+  // 統合された入力管理用プロパティ
+  inputEvent;       // 現在の入力位置（マウスまたはタッチ）
+  prevInputEvent;   // 1フレーム前の入力位置
+  isInputActive;    // 入力が有効かどうかのフラグ（マウス押下またはタッチ中）
+
   constructor() {
     // this を固定するためのバインド処理
     this.resize = this.resize.bind(this);
     this.render = this.render.bind(this);
+    // 統合された入力イベントハンドラーをバインド
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseDown = this.handleMouseDown.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleTouchStart = this.handleTouchStart.bind(this);
+    this.handleTouchMove = this.handleTouchMove.bind(this);
+    this.handleTouchEnd = this.handleTouchEnd.bind(this);
+    this.preventDefaultTouch = this.preventDefaultTouch.bind(this); // 追加
   }
 
   /**
@@ -100,20 +113,110 @@ class App {
     this.quadMvpMatrix = this.calcMvp();
 
     // マウスイベントの設定
-    this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this), false);
-    this.canvas.addEventListener('mousedown', (event) => { this.isMouseDown = true; }, false);
-    this.canvas.addEventListener('mouseup', (event) => { this.isMouseDown = false; }, false);
-    this.canvas.addEventListener('mouseleave', (event) => { this.isMouseDown = false; }, false);
+    // 統合された入力イベントの設定
+    // マウスイベント
+    this.canvas.addEventListener('mousemove', this.handleMouseMove, false);
+    this.canvas.addEventListener('mousedown', this.handleMouseDown, false);
+    this.canvas.addEventListener('mouseup', this.handleMouseUp, false);
+    this.canvas.addEventListener('mouseleave', this.handleMouseUp, false);
+
+    // タッチイベント
+    this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+    this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+    this.canvas.addEventListener('touchend', this.handleTouchEnd, { passive: false });
+    this.canvas.addEventListener('touchcancel', this.handleTouchEnd, { passive: false });
+
+    // キャンバス全体でのスクロール防止
+    this.canvas.style.touchAction = 'none';
+
+    // ドキュメント全体でのタッチイベント制御
+    document.addEventListener('touchstart', this.preventDefaultTouch, { passive: false });
+    document.addEventListener('touchmove', this.preventDefaultTouch, { passive: false });
   }
 
+  /**
+   * タッチイベントのデフォルト動作を防ぐ（修正版）
+   */
+  preventDefaultTouch(e) {
+    // キャンバス要素上でのタッチのみを対象とする
+    if (e.target === this.canvas) {
+      e.preventDefault();
+    }
+  }
 
-  handleMouseMove(e) {
-    if (!this.isMouseDown) return;
+  /**
+   * 座標を正規化する共通関数
+   */
+  normalizeCoordinates(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = 1.0-(e.clientY - rect.top) / rect.height;
-    this.mouseMoveEvent = { x, y }; 
-    console.log(this.mouseMoveEvent);
+    const x = (clientX - rect.left) / rect.width;
+    const y = 1.0 - (clientY - rect.top) / rect.height;
+    return { x, y };
+  }
+
+  /**
+   * マウス移動処理
+   */
+  handleMouseMove(e) {
+    if (!this.isInputActive) return;
+    this.inputEvent = this.normalizeCoordinates(e.clientX, e.clientY);
+  }
+
+  /**
+   * マウス押下処理
+   */
+  handleMouseDown(e) {
+    this.isInputActive = true;
+    this.inputEvent = this.normalizeCoordinates(e.clientX, e.clientY);
+    this.prevInputEvent = null; // 初回は前の位置をリセット
+  }
+
+  /**
+   * マウス離上処理
+   */
+  handleMouseUp(e) {
+    this.isInputActive = false;
+    this.inputEvent = null;
+    this.prevInputEvent = null;
+  }
+
+  /**
+   * タッチ開始処理（修正版）
+   */
+  handleTouchStart(e) {
+    e.preventDefault();
+    e.stopPropagation(); // 追加：イベントの伝播を停止
+    
+    this.isInputActive = true;
+    
+    const touch = e.touches[0];
+    this.inputEvent = this.normalizeCoordinates(touch.clientX, touch.clientY);
+    this.prevInputEvent = null; // 初回は前の位置をリセット
+  }
+
+  /**
+   * タッチ移動処理（修正版）
+   */
+  handleTouchMove(e) {
+    e.preventDefault();
+    e.stopPropagation(); // 追加：イベントの伝播を停止
+    
+    if (!this.isInputActive) return;
+    
+    const touch = e.touches[0];
+    this.inputEvent = this.normalizeCoordinates(touch.clientX, touch.clientY);
+  }
+
+  /**
+   * タッチ終了処理（修正版）
+   */
+  handleTouchEnd(e) {
+    e.preventDefault();
+    e.stopPropagation(); // 追加：イベントの伝播を停止
+    
+    this.isInputActive = false;
+    this.inputEvent = null;
+    this.prevInputEvent = null;
   }
 
   /**
@@ -810,40 +913,51 @@ class App {
     this.unbindTextures();
   }
 
+  /**
+   * ユーザー入力処理
+   */
   handleUserInput(velocitySourceBuffer, velocityDestBuffer, dyeSourceBuffer, dyeDestBuffer) {
-    // クリック中、前フレームのマウス位置と現在のマウス位置から速度を計算し、velocityBufferに加算する
-    if (!this.mouseMoveEvent) {
+    // 入力がない場合は単純にコピー
+    if (!this.inputEvent || !this.isInputActive) {
       this.blit(velocitySourceBuffer, velocityDestBuffer);
       this.blit(dyeSourceBuffer, dyeDestBuffer);
       return;
     }
-    if (!this.preveMouseMoveEvent) {
+
+    // 前フレームの位置がない場合は初期化
+    if (!this.prevInputEvent) {
       this.blit(velocitySourceBuffer, velocityDestBuffer);
       this.blit(dyeSourceBuffer, dyeDestBuffer);
-      this.preveMouseMoveEvent = this.mouseMoveEvent;
+      this.prevInputEvent = { ...this.inputEvent }; // コピーを作成
       return;
     }
+
+    // 移動距離が小さい場合はスキップ
     const move = Vec2.create(
-      this.mouseMoveEvent.x - this.preveMouseMoveEvent.x,
-      this.mouseMoveEvent.y - this.preveMouseMoveEvent.y);
-      const distance = Vec2.length(move);
-    if(distance < 0.001) {
+      this.inputEvent.x - this.prevInputEvent.x,
+      this.inputEvent.y - this.prevInputEvent.y
+    );
+    const distance = Vec2.length(move);
+    
+    if (distance < 0.001) {
       this.blit(velocitySourceBuffer, velocityDestBuffer);
       this.blit(dyeSourceBuffer, dyeDestBuffer);
-      this.preveMouseMoveEvent = this.mouseMoveEvent;
+      this.prevInputEvent = { ...this.inputEvent };
       return;
     }
 
-
+    // velocityとdyeを追加
     this.addVelocity(velocitySourceBuffer, velocityDestBuffer);
-    // this.blit(velocitySourceBuffer, velocityDestBuffer);
     this.addDye(dyeSourceBuffer, dyeDestBuffer);
-    // this.blit(dyeSourceBuffer, dyeDestBuffer);
 
-    this.preveMouseMoveEvent = this.mouseMoveEvent;
-    this.mouseMoveEvent = null;
+    // 前フレームの位置を更新
+    this.prevInputEvent = { ...this.inputEvent };
+    this.inputEvent = null; // 処理済みなのでクリア
   }
 
+  /**
+   * velocity追加処理
+   */
   addVelocity(sourceBuffer, destBuffer) {
     const effectRadius = 0.05;
     const effectScale = 1.0;
@@ -863,8 +977,8 @@ class App {
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
-    gl.uniform2fv(this.uniformLocations[programId].previousMouse, [this.preveMouseMoveEvent.x, this.preveMouseMoveEvent.y]);
-    gl.uniform2fv(this.uniformLocations[programId].currentMouse, [this.mouseMoveEvent.x, this.mouseMoveEvent.y]);
+    gl.uniform2fv(this.uniformLocations[programId].previousMouse, [this.prevInputEvent.x, this.prevInputEvent.y]);
+    gl.uniform2fv(this.uniformLocations[programId].currentMouse, [this.inputEvent.x, this.inputEvent.y]);
     gl.uniform1f(this.uniformLocations[programId].effectRadius, effectRadius);
     gl.uniform1f(this.uniformLocations[programId].effectScale, effectScale);
 
@@ -878,6 +992,9 @@ class App {
     this.unbindTextures();
   }
 
+  /**
+   * dye追加処理
+   */
   addDye(sourceBuffer, destBuffer) {
     const effectRadius = 0.02;
     const effectScale = 0.01;
@@ -897,11 +1014,10 @@ class App {
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
-    gl.uniform2fv(this.uniformLocations[programId].previousMouse, [this.preveMouseMoveEvent.x, this.preveMouseMoveEvent.y]);
-    gl.uniform2fv(this.uniformLocations[programId].currentMouse, [this.mouseMoveEvent.x, this.mouseMoveEvent.y]);
+    gl.uniform2fv(this.uniformLocations[programId].previousMouse, [this.prevInputEvent.x, this.prevInputEvent.y]);
+    gl.uniform2fv(this.uniformLocations[programId].currentMouse, [this.inputEvent.x, this.inputEvent.y]);
     gl.uniform1f(this.uniformLocations[programId].effectRadius, effectRadius);
     gl.uniform1f(this.uniformLocations[programId].effectScale, effectScale);
-
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
