@@ -2,12 +2,12 @@
 precision highp float;
 precision highp int;
 
-out vec4 fragColor;
+out vec4 fragColor; // d_n
 
 uniform float u_time;
 uniform vec2 u_resolution;
-uniform sampler2D u_bufferTexture;
-uniform sampler2D u_initialTexture;
+uniform sampler2D u_bufferTexture;  // d_n-1
+uniform sampler2D u_initialTexture; // d_0
 uniform float u_centerFactor;
 uniform float u_beta;
 uniform float u_scale;
@@ -17,12 +17,13 @@ void main(){
     vec2 uv = gl_FragCoord.xy / u_resolution.xy;
     vec2 texelSize = 1.0 / u_resolution.xy;
 
-    vec2 center = texture(u_initialTexture, uv).xy * u_scale - u_offset;
-    vec2 left   = texture(u_bufferTexture, uv - vec2(texelSize.x, 0.0)).xy * u_scale - u_offset;
-    vec2 right  = texture(u_bufferTexture, uv + vec2(texelSize.x, 0.0)).xy * u_scale - u_offset;
-    vec2 up     = texture(u_bufferTexture, uv + vec2(0.0, texelSize.y)).xy * u_scale - u_offset;
-    vec2 down   = texture(u_bufferTexture, uv - vec2(0.0, texelSize.y)).xy * u_scale - u_offset;
+    vec2 center = texelFetch(u_initialTexture, ivec2(gl_FragCoord.xy), 0).xy * u_scale - u_offset;
+    vec2 left   = texelFetch(u_bufferTexture, ivec2(gl_FragCoord.xy - vec2(1.0, 0.0)), 0).xy * u_scale - u_offset;
+    vec2 right  = texelFetch(u_bufferTexture, ivec2(gl_FragCoord.xy + vec2(1.0, 0.0)), 0).xy * u_scale - u_offset;
+    vec2 up     = texelFetch(u_bufferTexture, ivec2(gl_FragCoord.xy + vec2(0.0, 1.0)), 0).xy * u_scale - u_offset;
+    vec2 down   = texelFetch(u_bufferTexture, ivec2(gl_FragCoord.xy - vec2(0.0, 1.0)), 0).xy * u_scale - u_offset;
 
     vec2 value = (left + right + up + down + center * u_centerFactor) * u_beta;
-    fragColor = vec4((value + u_offset) / u_scale, 0.0, 0.0);
+    value = (value + u_offset) / u_scale; // [-1, 1] -> [0, 1]
+    fragColor = vec4(value, 0.0, 0.0);
 }

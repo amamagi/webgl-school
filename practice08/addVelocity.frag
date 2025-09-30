@@ -10,18 +10,19 @@ uniform sampler2D u_bufferTexture;
 uniform vec2 u_previousMouse;
 uniform vec2 u_currentMouse;
 uniform float u_effectRadius;
+uniform float u_effectScale;
 
 void main(){
-    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-    vec2 texelSize = 1.0 / u_resolution.xy;
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    vec2 pixelPos = vec2(coord) / u_resolution;
 
-    vec2 currentVelocity = texture(u_bufferTexture, uv).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
+    vec2 currentVelocity = texelFetch(u_bufferTexture, coord, 0).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
 
     vec2 mouseVelocity = (u_currentMouse - u_previousMouse);
-    float distanceToMouse = length(uv - u_currentMouse);
+    float distanceToMouse = length(pixelPos - u_currentMouse);
     float effect = exp(-distanceToMouse * distanceToMouse / (u_effectRadius * u_effectRadius));
 
-    vec2 newVelocity = currentVelocity + mouseVelocity * effect * 5.0; // 効果を強調
+    vec2 newVelocity = currentVelocity + mouseVelocity * effect * u_effectScale; // 効果を強調
     newVelocity = clamp(newVelocity, -1.0, 1.0); // 制限
     newVelocity = (newVelocity + 1.0) / 2.0; // [-1, 1] -> [0, 1]
 

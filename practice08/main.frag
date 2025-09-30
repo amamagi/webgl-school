@@ -234,13 +234,13 @@ vec3 oklch2rgb(float L, float C, float H) {
 }
 
 vec3[] ctable = vec3[](
-  vec3(0.2118, 0.5137, 0.6902),
+  vec3(0.3529, 0.5294, 0.6941),
   vec3(0.4235, 0.5686, 0.702),
   vec3(0.6078, 0.6235, 0.8),
   vec3(0.6863, 0.6667, 0.7882),
   vec3(0.86, 0.71, 0.82),
   vec3(0.8863, 0.8941, 0.749),
-  vec3(0.84, 0.92, 0.82),
+  vec3(0.7725, 0.8784, 0.749),
   vec3(0.66, 0.87, 0.93)
 );
 
@@ -274,7 +274,7 @@ void main(){
 
     float v = texture(u_bufferTexture, pos).x;
 
-    vec3 r = rainbow(smoothstep(0.2, 0.8, v));// * oklch2rgb(1.0, 0.05, theta * 180.0 / PI + u_time * 10.0);
+    vec3 r = rainbow(v);//smoothstep(0.2, 0.8, v));// * oklch2rgb(1.0, 0.05, theta * 180.0 / PI + u_time * 10.0);
     r = pow(r, vec3(0.8));
     // color = pow(color, vec3(2.2));
     // color = rainbow(v);// + oklch2rgb(lambert, 0.1, theta * 180.0 / PI + u_time * 10.0) * 0.05;
@@ -302,7 +302,7 @@ void main(){
     // vec3 rainbow = hsv2rgb(vec3(v, 0.5, 1.0));
 
 
-    fragColor = vec4(color, 1.0);
+    fragColor = vec4(r, 1.0);
 
     // fragColor.rgb = vec3(v);
     fragColor.a = 1.0;

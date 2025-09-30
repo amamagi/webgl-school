@@ -13,13 +13,13 @@ uniform float u_deltaTime;
 
 void main(){
     vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-    vec2 texelSize = 1.0 / u_resolution.xy;
 
-    vec2 velocity = texture(u_velocityTexture, uv).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
+    vec2 velocity = texelFetch(u_velocityTexture, ivec2(uv * u_resolution.xy), 0).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
+    vec2 offset = velocity * u_deltaTime / u_resolution.xy; // 速度に基づくオフセット計算
+    uv = clamp(uv - offset, vec2(0.0), vec2(1.0));
 
-    vec2 currentValue = texture(u_textureToAdvect, uv).xy;
-    vec2 offset = velocity * u_deltaTime * texelSize;
-    vec2 prevValue = texture(u_textureToAdvect, clamp(uv - offset, 0.0, 1.0)).xy;
+    // 複数のテクセルをサンプリングして補間したいので、texture()を使う
+    vec2 sourceVelocity = texture(u_textureToAdvect, uv).xy;
 
-    fragColor = vec4(prevValue * u_dissipationFactor + currentValue * (1.0 - u_dissipationFactor), 0.0, 0.0);
+    fragColor = vec4(sourceVelocity * u_dissipationFactor, 0.0, 0.0);
 }
