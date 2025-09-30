@@ -7,7 +7,7 @@ import { Pane } from '../lib/tweakpane-4.0.3.min.js';
 window.addEventListener('DOMContentLoaded', async () => {
   const app = new App();
   app.init();
-  // app.setupPane(); // tweakpane の初期化をメソッド化 @@@
+  app.setupPane(); // tweakpane の初期化をメソッド化 @@@
   await app.load();
   app.setupGeometry();
   app.setupLocation();
@@ -56,16 +56,15 @@ class App {
   // --- その他 ---
   startTime;         // レンダリング開始時のタイムスタンプ
   shouldTargetA;      // 現在の描画ターゲットが bufferA にするかどうかのフラグ
-  initialized = false; // 初期状態をセットしたかどうかのフラグ
   mouseMoveEvent;     // マウス移動イベント
   preveMouseMoveEvent; // 1フレーム前のマウス移動イベント
   isMouseDown;     // マウスが押されているかどうかのフラグ
+  enableLighting = false;    // ライティングを有効にするかどうかのフラグ
 
   constructor() {
     // this を固定するためのバインド処理
     this.resize = this.resize.bind(this);
     this.render = this.render.bind(this);
-    this.handleClick = this.handleClick.bind(this); // クリックハンドラーをバインド @@@
   }
 
   /**
@@ -90,7 +89,10 @@ class App {
     this.resize();
 
     // リサイズイベントの設定
-    window.addEventListener('resize', this.resize, false);
+    window.addEventListener('resize', () => {
+    this.resize();
+    this.initializeBuffer();
+  }, false);
     
     // 深度テストは初期状態で有効
     this.gl.enable(this.gl.DEPTH_TEST);
@@ -121,28 +123,17 @@ class App {
     // Tweakpane を使った GUI の設定
     const pane = new Pane();
     const parameter = {
-      'timeScale': this.timeScale
+      lighting: this.enableLighting,
     };
-    // テクスチャの表示・非表示 @@@
-    pane.addBinding(parameter, 'timeScale')
-    .on('change', (v) => {
-      this.timeScale = v.value;
+    // テクスチャの初期化
+    pane.addButton({ title: 'Reset' }).on('click', () => {
+      this.initializeBuffer();
     });
-  }
+    // ライティングのON/OFF
+    pane.addBinding(parameter, 'lighting').on('change', (v) => {
+      this.enableLighting = v.value;
+    });
 
-  /**
-   * クリック処理
-   */
-  handleClick(event) {
-    // クリック座標を取得（必要に応じて）
-    const rect = this.canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    console.log(`クリック座標: (${x}, ${y})`);
-    
-    // レンダリングを実行
-    this.render();
   }
 
   /**
@@ -217,17 +208,6 @@ class App {
         const addDyeFShader = WebGLUtility.createShaderObject(gl, addDyeFSource, gl.FRAGMENT_SHADER);
         this.addDyeProgram = WebGLUtility.createProgramObject(gl, addDyeVShader, addDyeFShader);
 
-        // フレームバッファを生成する @@@
-        // リサイズが完了してからフレームバッファを作成
-        this.resize(); // サイズを再設定
-        this.velocityBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.velocityBufferTemp = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.velocityDivergenceBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.dyeBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.dyeBufferTemp = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.tempBufferA = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.tempBufferB = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-        this.shouldTargetA = true;
 
         await WebGLUtility.loadImage('../textures/earth.jpg').then((image) => {
           this.startingTexture = WebGLUtility.createTexture(gl, image);
@@ -297,6 +277,7 @@ class App {
 
     Object.assign(this.uniformLocations[this.getProgramId(this.program)], {
       bufferTexture: gl.getUniformLocation(this.program, 'u_bufferTexture'),
+      enableLighting: gl.getUniformLocation(this.program, 'u_enableLighting'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.solverProgram)], {
       bufferTexture: gl.getUniformLocation(this.solverProgram, 'u_bufferTexture'),
@@ -309,6 +290,7 @@ class App {
     Object.assign(this.uniformLocations[this.getProgramId(this.blitProgram)], {
       bufferTexture: gl.getUniformLocation(this.blitProgram, 'u_bufferTexture'),
       invertY: gl.getUniformLocation(this.blitProgram, 'u_invertY'),
+      grayScale: gl.getUniformLocation(this.blitProgram, 'u_grayScale'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.advectionProgram)], {
       velocityTexture: gl.getUniformLocation(this.advectionProgram, 'u_velocityTexture'),
@@ -439,10 +421,36 @@ class App {
     gl.uniform1f(this.uniformLocations[programId].time, performance.now() * 0.001);
   }
 
-  initializeBuffer() {
-    if( this.initialized ) return;
-
+  deleteFramebuffer(buffer) {
     const gl = this.gl;
+    WebGLUtility.deleteFramebuffer(gl, buffer.framebuffer, buffer.depthRenderBuffer, buffer.texture);
+  }
+
+  initializeBuffer() {
+    const gl = this.gl;
+    
+    // フレームバッファを生成する
+    if (this.velocityBuffer) {
+      // 既にフレームバッファが存在する場合は削除してから再作成
+      this.deleteFramebuffer(this.velocityBuffer);
+      this.deleteFramebuffer(this.velocityBufferTemp);
+      this.deleteFramebuffer(this.velocityDivergenceBuffer);
+      this.deleteFramebuffer(this.dyeBuffer);
+      this.deleteFramebuffer(this.dyeBufferTemp);
+      this.deleteFramebuffer(this.tempBufferA);
+      this.deleteFramebuffer(this.tempBufferB);
+    } 
+
+    this.velocityBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.velocityBufferTemp = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.velocityDivergenceBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.dyeBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.dyeBufferTemp = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.tempBufferA = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.tempBufferB = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.shouldTargetA = true;
+
+    // 各バッファの初期状態を設定
     {
       // // velocityBuffer の初期化
       // // 1. Use Program
@@ -465,7 +473,9 @@ class App {
       // // 6. Unbind
       // this.unbindTextures();
     }
+
     this.clearBuffer(this.velocityBuffer, [0.5, 0.5, 0.0, 0.0]);
+    this.clearBuffer(this.velocityBufferTemp, [0.5, 0.5, 0.0, 0.0]);
 
     {
       // dyeBuffer の初期化
@@ -484,6 +494,7 @@ class App {
       this.bindBasicUniforms(program);
       gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
       gl.uniform1i(this.uniformLocations[programId].invertY, 1);
+      gl.uniform1i(this.uniformLocations[programId].grayScale, 1);
 
       // 4. Bind Attributes
       WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -493,9 +504,10 @@ class App {
 
       // 6. Unbind
       this.unbindTextures();
+
+      this.blit(this.dyeBuffer, this.dyeBufferTemp);
     }
     
-    this.initialized = true;
   }
 
   blit(sourceBuffer, destBuffer) {
@@ -516,6 +528,7 @@ class App {
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
     gl.uniform1i(this.uniformLocations[programId].invertY, 0);
+    gl.uniform1i(this.uniformLocations[programId].grayScale, 0);
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -533,9 +546,8 @@ class App {
     const scale = isDye ? 1.0 : 2.0;
     const offset = isDye ? 0.0 : 1.0;
     const clearColor = isDye ? [0.0, 0.0, 0.0, 0.0] : [0.5, 0.5, 0.0, 0.0];
-    const viscosity = isDye ? 0.5 : 0.5;
-    const timeStep = 0.1;
-
+    const viscosity = isDye ? 0.01 : 0.02;
+    const timeStep = 0.001;
     
     // 1. Use Program
     let program = this.solverProgram;
@@ -707,7 +719,7 @@ class App {
 
   advect(textureToAdvect, velocityBuffer, destBuffer, dissipation=0.99) {
     const gl = this.gl;
-    const deltaTime = 0.5;
+    const deltaTime = 0.016;
 
     // 1. Use Program
     const program = this.advectionProgram;
@@ -786,6 +798,7 @@ class App {
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
+    gl.uniform1i(this.uniformLocations[programId].enableLighting, this.enableLighting ? 1 : 0);
 
     // 4. Bind Attribute
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -833,7 +846,7 @@ class App {
 
   addVelocity(sourceBuffer, destBuffer) {
     const effectRadius = 0.05;
-    const effectScale = 10.0;
+    const effectScale = 1.0;
 
     const gl = this.gl;
     // 1. Use Program
@@ -866,8 +879,8 @@ class App {
   }
 
   addDye(sourceBuffer, destBuffer) {
-    const effectRadius = 0.05;
-    const effectScale = 0.02;
+    const effectRadius = 0.02;
+    const effectScale = 0.01;
   
     const gl = this.gl;
     // 1. Use Program
@@ -923,18 +936,17 @@ class App {
     this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
     this.project(this.velocityBuffer, this.velocityBufferTemp);
 
-    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 1);
+    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.992);
     this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
     this.project(this.velocityBufferTemp, this.velocityBuffer);
     
     // this.blit(this.velocityBufferTemp, this.velocityBuffer);
-
     
     // --- dye ---
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
     this.diffuse(this.dyeBuffer, this.dyeBufferTemp, true);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
-    this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 1);
+    this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
 
     this.visualize(this.dyeBuffer);
