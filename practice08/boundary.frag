@@ -25,9 +25,9 @@ vec2 applyBoundaryCondition(ivec2 coord, ivec2 offset, bool scaleX, bool scaleY)
     vec2 value = texelFetch(u_bufferTexture, coord + offset, 0).xy;
     value = normalizeFromTexture(value);
     
-    // スケールを適用（境界での反射を表現）
+    // スケールを適用
     if (u_dimension == 1) {
-        if (scaleX) value.x *= u_scale;
+        value.x *= u_scale;
     } else if (u_dimension == 2) {
         if (scaleX) value.x *= u_scale;
         if (scaleY) value.y *= u_scale;

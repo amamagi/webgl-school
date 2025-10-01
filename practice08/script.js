@@ -60,6 +60,7 @@ class App {
   preveMouseMoveEvent; // 1フレーム前のマウス移動イベント
   isMouseDown;     // マウスが押されているかどうかのフラグ
   enableLighting = false;    // ライティングを有効にするかどうかのフラグ
+  showVelocity = false;   // 速度場を可視化するかどうかのフラグ
 
   // 統合された入力管理用プロパティ
   inputEvent;       // 現在の入力位置（マウスまたはタッチ）
@@ -227,6 +228,7 @@ class App {
     const pane = new Pane();
     const parameter = {
       lighting: this.enableLighting,
+      showVelocity: this.showVelocity
     };
     // テクスチャの初期化
     pane.addButton({ title: 'Reset' }).on('click', () => {
@@ -235,6 +237,10 @@ class App {
     // ライティングのON/OFF
     pane.addBinding(parameter, 'lighting').on('change', (v) => {
       this.enableLighting = v.value;
+    });
+    // 速度場の可視化ON/OFF
+    pane.addBinding(parameter, 'showVelocity').on('change', (v) => {
+      this.showVelocity = v.value;
     });
 
   }
@@ -381,6 +387,7 @@ class App {
     Object.assign(this.uniformLocations[this.getProgramId(this.program)], {
       bufferTexture: gl.getUniformLocation(this.program, 'u_bufferTexture'),
       enableLighting: gl.getUniformLocation(this.program, 'u_enableLighting'),
+      is2d: gl.getUniformLocation(this.program, 'u_is2d'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.solverProgram)], {
       bufferTexture: gl.getUniformLocation(this.solverProgram, 'u_bufferTexture'),
@@ -884,7 +891,7 @@ class App {
     this.unbindTextures();
   }
 
-  visualize(buffer) {
+  visualize(buffer, is2d=false) {
     const gl = this.gl;
 
     // 1. Use Program
@@ -902,6 +909,7 @@ class App {
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
     gl.uniform1i(this.uniformLocations[programId].enableLighting, this.enableLighting ? 1 : 0);
+    gl.uniform1i(this.uniformLocations[programId].is2d, is2d ? 1 : 0);
 
     // 4. Bind Attribute
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -917,6 +925,8 @@ class App {
    * ユーザー入力処理
    */
   handleUserInput(velocitySourceBuffer, velocityDestBuffer, dyeSourceBuffer, dyeDestBuffer) {
+    const activateDistance = 0.01;
+    
     // 入力がない場合は単純にコピー
     if (!this.inputEvent || !this.isInputActive) {
       this.blit(velocitySourceBuffer, velocityDestBuffer);
@@ -938,11 +948,9 @@ class App {
       this.inputEvent.y - this.prevInputEvent.y
     );
     const distance = Vec2.length(move);
-    
-    if (distance < 0.001) {
+    if (distance < activateDistance) {
       this.blit(velocitySourceBuffer, velocityDestBuffer);
       this.blit(dyeSourceBuffer, dyeDestBuffer);
-      this.prevInputEvent = { ...this.inputEvent };
       return;
     }
 
@@ -1065,7 +1073,10 @@ class App {
     this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
 
-    this.visualize(this.dyeBuffer);
-    // this.visualize(this.velocityBuffer);
+    if (this.showVelocity){
+      this.visualize(this.velocityBuffer, true);
+    } else {
+      this.visualize(this.dyeBuffer);
+    }
   }
 }

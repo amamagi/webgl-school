@@ -11,6 +11,8 @@ uniform sampler2D u_velocityTexture;
 uniform float u_dissipationFactor;
 uniform float u_deltaTime;
 
+// FIXME: ベクトルの衝突境界でエネルギー保存則が破られている
+// FIXME: 8方向に制限されてしまう
 void main(){
     vec2 uv = gl_FragCoord.xy / u_resolution.xy;
 

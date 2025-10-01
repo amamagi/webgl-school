@@ -7,23 +7,30 @@ out vec4 fragColor;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform sampler2D u_bufferTexture;
-uniform vec2 u_previousMouse;
-uniform vec2 u_currentMouse;
+uniform vec2 u_previousMouse; // in [0, 1]
+uniform vec2 u_currentMouse;  // in [0, 1]
 uniform float u_effectRadius;
 uniform float u_effectScale;
 
+float sdSegment( in vec2 p, in vec2 a, in vec2 b )
+{
+    vec2 pa = p-a, ba = b-a;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length( pa - ba*h );
+}
+
 void main(){
-    ivec2 coord = ivec2(gl_FragCoord.xy);
-    vec2 pixelPos = vec2(coord) / u_resolution;
+    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+    vec2 currentVelocity = texture(u_bufferTexture, uv).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
 
-    vec2 currentVelocity = texelFetch(u_bufferTexture, coord, 0).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
+    vec2 mouseVelocity = normalize((u_currentMouse - u_previousMouse));
+    float distanceToMouse = sdSegment(uv, u_previousMouse, u_currentMouse);
 
-    vec2 mouseVelocity = (u_currentMouse - u_previousMouse);
-    float distanceToMouse = length(pixelPos - u_currentMouse);
+    // gaussian falloff
     float effect = exp(-distanceToMouse * distanceToMouse / (u_effectRadius * u_effectRadius));
 
-    vec2 newVelocity = currentVelocity + mouseVelocity * effect * u_effectScale; // 効果を強調
-    newVelocity = clamp(newVelocity, -1.0, 1.0); // 制限
+    vec2 newVelocity = mix(currentVelocity, mouseVelocity * effect * u_effectScale, effect);
+
     newVelocity = (newVelocity + 1.0) / 2.0; // [-1, 1] -> [0, 1]
 
     fragColor = vec4(newVelocity, 0.0, 0.0);

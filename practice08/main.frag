@@ -8,9 +8,16 @@ uniform float u_time;
 uniform vec2 u_resolution;
 uniform sampler2D u_bufferTexture;
 uniform bool u_enableLighting;
+uniform bool u_is2d;
+
+vec3 light = normalize(vec3(1.0, 1.0, 1.0));
 
 float base21(vec2 p){
     return texture(u_bufferTexture, p).x;
+}
+
+vec2 base22(vec2 p){
+    return texture(u_bufferTexture, p).xy;
 }
 
 vec2 grad(vec2 p){
@@ -18,6 +25,13 @@ vec2 grad(vec2 p){
   float x = base21(p + vec2(eps, 0.0)) - base21(p - vec2(eps, 0.0));
   float y = base21(p + vec2(0.0, eps)) - base21(p - vec2(0.0, eps));
   return vec2(x, y) / (2.0 * eps);
+}
+
+vec2 grad2(vec2 p){
+  float eps = 0.001;
+  vec2 x = base22(p + vec2(eps, 0.0)) - base22(p - vec2(eps, 0.0));
+  vec2 y = base22(p + vec2(0.0, eps)) - base22(p - vec2(0.0, eps));
+  return vec2(x.x + y.y, x.y + y.x) / (2.0 * eps);
 }
 
 
@@ -42,10 +56,23 @@ vec3 rainbow(float v){
 }
 
 
-vec3 light = normalize(vec3(1.0, 0.0, 1.0));
 
 void main(){
     vec2 pos = gl_FragCoord.xy / u_resolution.xy;
+
+    if (u_is2d){
+      vec2 v = texture(u_bufferTexture, pos).xy * 2.0 - 1.0;
+      vec3 normal = normalize(vec3(grad2(pos), 1.0));
+      float lambert = dot(-normal, -light);
+      vec3 color = vec3(1.0);
+      if (u_enableLighting){
+        color = vec3(lambert);
+      }
+      color *= rainbow(length(v) * 0.5 + 0.5);
+      fragColor = vec4(color, 1.0);
+      return;
+    }
+
     vec3 normal = normalize(vec3(grad(pos), 1.0));
     float lambert = dot(-normal, -light);
     vec3 color = vec3(1.0);
