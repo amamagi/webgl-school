@@ -68,7 +68,8 @@ void main(){
       if (u_enableLighting){
         color = vec3(lambert);
       }
-      color *= rainbow(length(v) * 0.5 + 0.5);
+      color *= rainbow(length(v));
+      // color *= vec3(length(v));
       fragColor = vec4(color, 1.0);
       return;
     }

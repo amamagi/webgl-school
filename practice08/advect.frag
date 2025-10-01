@@ -18,6 +18,8 @@ void main(){
 
     ivec2 coord = ivec2(gl_FragCoord.xy);
     vec2 velocity = texelFetch(u_velocityTexture, coord, 0).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
+
+    velocity = mix(velocity, vec2(0.0), step(length(velocity), 0.01)); // 小さい速度は無視0; // [0, 1] -> [-1, 1]
     vec2 offset = velocity * u_deltaTime;
 
     uv = uv - offset;

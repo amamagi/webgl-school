@@ -657,7 +657,7 @@ class App {
     const offset = isDye ? 0.0 : 1.0;
     const clearColor = isDye ? [0.0, 0.0, 0.0, 0.0] : [0.5, 0.5, 0.0, 0.0];
     const viscosity = isDye ? 0.01 : 0.02;
-    const timeStep = 0.001;
+    const timeStep = isDye ? 0.016 : 1.0;
     
     // 1. Use Program
     let program = this.solverProgram;
@@ -743,7 +743,7 @@ class App {
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
 
-    const itter = 30;
+    const itter = 20;
     let target;
     for (let i = 0; i < itter; i++) {
       this.shouldTargetA = !this.shouldTargetA;
@@ -827,9 +827,8 @@ class App {
     this.unbindTextures();
   }
 
-  advect(textureToAdvect, velocityBuffer, destBuffer, dissipation=0.99) {
+  advect(textureToAdvect, velocityBuffer, destBuffer, timeScale=0.015, dissipation=0.99) {
     const gl = this.gl;
-    const deltaTime = 0.016;
 
     // 1. Use Program
     const program = this.advectionProgram;
@@ -847,7 +846,7 @@ class App {
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
     gl.uniform1f(this.uniformLocations[programId].dissipation, dissipation);
-    gl.uniform1f(this.uniformLocations[programId].deltaTime, deltaTime);
+    gl.uniform1f(this.uniformLocations[programId].deltaTime, timeScale);
     gl.uniform1i(this.uniformLocations[programId].textureToAdvect, 0);
     gl.uniform1i(this.uniformLocations[programId].velocityTexture, 1);
 
@@ -1060,7 +1059,7 @@ class App {
     this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
     this.project(this.velocityBuffer, this.velocityBufferTemp);
 
-    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.992);
+    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.01, 0.95);
     this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
     this.project(this.velocityBufferTemp, this.velocityBuffer);
     
@@ -1070,7 +1069,7 @@ class App {
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
     this.diffuse(this.dyeBuffer, this.dyeBufferTemp, true);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
-    this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
+    this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.01, 0.998);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, 1);
 
     if (this.showVelocity){
