@@ -721,48 +721,48 @@ class App {
     this.clearBuffer(this.tempBufferB);
 
     // --- Jacobi 反復計算を行う ---
-    // 1. Use Program
-    let program = this.solverProgram;
-    let programId = this.getProgramId(program);
-    gl.useProgram(program);
-
-    // 2. Bind Textures
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.velocityDivergenceBuffer.texture);
-
-    // 3. Bind Uniforms
-    this.bindBasicUniforms(program);
-    const centerFactor = -1.0;
-    const beta = 0.25;
-    gl.uniform1f(this.uniformLocations[programId].centerFactor, centerFactor);
-    gl.uniform1f(this.uniformLocations[programId].beta, beta);
-    gl.uniform1i(this.uniformLocations[programId].initialTexture, 0);
-    gl.uniform1f(this.uniformLocations[programId].scale, 1.0);
-    gl.uniform1f(this.uniformLocations[programId].offset, 0.0);
-
-    // 4. Bind Attributes
-    WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
-
-    const itter = 20;
+    const itter = 50;
     let target;
     for (let i = 0; i < itter; i++) {
       this.shouldTargetA = !this.shouldTargetA;
       this.handleBoundary(this.shouldTargetA ? this.tempBufferB : this.tempBufferA, this.shouldTargetA ? this.tempBufferA : this.tempBufferB, 1.0);
 
-      // 2.5. Bind Texture for Ping-Pong
+      // 1. Use Program
+      let program = this.solverProgram;
+      let programId = this.getProgramId(program);
+      gl.useProgram(program);
+
+      // 2. Bind Textures
+      // target
       this.shouldTargetA = !this.shouldTargetA;
       target = this.shouldTargetA ? this.tempBufferA : this.tempBufferB;
       gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // source
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.velocityDivergenceBuffer.texture);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, this.shouldTargetA ? this.tempBufferB.texture : this.tempBufferA.texture);
 
+      // 3. Bind Uniforms
+      this.bindBasicUniforms(program);
+      const centerFactor = -1.0;
+      const beta = 0.25;
+      gl.uniform1f(this.uniformLocations[programId].centerFactor, centerFactor);
+      gl.uniform1f(this.uniformLocations[programId].beta, beta);
+      gl.uniform1i(this.uniformLocations[programId].initialTexture, 0);
+      gl.uniform1f(this.uniformLocations[programId].scale, 1.0);
+      gl.uniform1f(this.uniformLocations[programId].offset, 0.0);
+
+      // 4. Bind Attributes
+      WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
+
       // 5. Draw
       gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+      
+      // 6. Unbind
+      this.unbindTextures();
     }
-    
-    // 6. Unbind
-    this.unbindTextures();
       
     // --- 発散のない速度場を求める ---
     this.getDivFreeVelocity(target, velocityBuffer, destBuffer);
