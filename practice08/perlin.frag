@@ -152,7 +152,7 @@ float pnoise31(vec3 p){
 float PI = 3.14159265359;
 float warp21(vec2 p){
     float val = 0.0;
-    float g = 0.1;
+    float g = 0.5;
     for (int i = 0; i < 4; i++){
         val = pnoise21(p + g * vec2(cos(2.0 * PI * val), sin(2.0 * PI * val)));
     }
@@ -166,6 +166,9 @@ void main(){
     const float eps = 0.01;
     float divX = (warp21(pos + vec2(-eps , 0)) - warp21(pos + vec2(eps, 0))) / (2.0 * eps) * 0.5 + 0.5;
     float divY = (warp21(pos + vec2(0, -eps)) - warp21(pos + vec2(0, eps))) / (2.0 * eps) * 0.5 + 0.5;
-    fragColor.rgb = normalize(vec3(divX, divY, 1.0));
+    fragColor.rgb = normalize(vec3(divX, divY, 1.0)) * 1.5;
+    fragColor.b = 0.0;
+
+    // fragColor.rgb = vec3(gnoise21(pos * 10.0 + vec2(u_time * 0.1, u_time * 0.1)));
     fragColor.a = 1.0;
 }

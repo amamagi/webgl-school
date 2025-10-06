@@ -7,33 +7,17 @@ out vec4 fragColor;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform sampler2D u_bufferTexture;
-uniform float u_scale;
+uniform float u_bufferScale; // テクスチャ値のスケール
+uniform float u_bufferOffset; // テクスチャ値のオフセット
+uniform float u_boundaryEffects; // 境界での効果係数 [-1.0, 1.0]
 uniform int u_dimension; // 1: x方向のみ, 2: 両方向
 
-// 値を[-1, 1]から[0, 1]に変換
-vec2 normalizeToTexture(vec2 value) {
-    return (value + 1.0) * 0.5;
+vec2 restoreValue(vec2 texValue) {
+    return texValue * u_bufferScale * 2.0 - u_bufferOffset; // [0, 1] -> [-vs, vs]
 }
 
-// 値を[0, 1]から[-1, 1]に変換
-vec2 normalizeFromTexture(vec2 value) {
-    return value * 2.0 - 1.0;
-}
-
-// 境界条件を適用
-vec2 applyBoundaryCondition(ivec2 coord, ivec2 offset, bool scaleX, bool scaleY) {
-    vec2 value = texelFetch(u_bufferTexture, coord + offset, 0).xy;
-    value = normalizeFromTexture(value);
-    
-    // スケールを適用
-    if (u_dimension == 1) {
-        value.x *= u_scale;
-    } else if (u_dimension == 2) {
-        if (scaleX) value.x *= u_scale;
-        if (scaleY) value.y *= u_scale;
-    }
-    
-    return normalizeToTexture(value);
+vec2 compressValue(vec2 value) {
+    return (value + u_bufferOffset) / (u_bufferScale * 2.0); // [-vs, vs] -> [0, 1]
 }
 
 void main() {
@@ -41,35 +25,44 @@ void main() {
     ivec2 resolution = ivec2(u_resolution);
     
     // 境界判定
-    bool isLeftBoundary = coord.x == 0;
-    bool isRightBoundary = coord.x == resolution.x - 1;
-    bool isBottomBoundary = coord.y == 0;
-    bool isTopBoundary = coord.y == resolution.y - 1;
-    
-    // 左境界
-    if (isLeftBoundary) {
-        vec2 result = applyBoundaryCondition(coord, ivec2(1, 0), true, false);
+    int range = 4; // 境界とみなす範囲
+    bool isLeftBoundary = coord.x < range;
+    bool isRightBoundary = coord.x >= (resolution.x - range);
+    bool isBottomBoundary = coord.y < range;
+    bool isTopBoundary = coord.y >= (resolution.y - range);
+
+    if (u_dimension == 1){
+        if (!(isLeftBoundary || isRightBoundary || isBottomBoundary || isTopBoundary)) {
+            fragColor = texelFetch(u_bufferTexture, coord, 0);
+            return;
+        }
+        vec2 value = restoreValue(texelFetch(u_bufferTexture, coord, 0).xy);
+        value = value * u_boundaryEffects;
+        vec2 result = compressValue(value);
+        fragColor = vec4(result, 0.0, 1.0);
+        return;
+    }
+
+    // 左右境界
+    if (isLeftBoundary || isRightBoundary){
+        vec2 normal = isLeftBoundary ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
+        vec2 value = restoreValue(texelFetch(u_bufferTexture, coord, 0).xy);
+        if (dot(normal, value) < 0.0) {
+            value.x = value.x * u_boundaryEffects;
+        }
+        vec2 result = compressValue(value);
         fragColor = vec4(result, 0.0, 1.0);
         return;
     }
     
-    // 右境界
-    if (isRightBoundary) {
-        vec2 result = applyBoundaryCondition(coord, ivec2(-1, 0), true, false);
-        fragColor = vec4(result, 0.0, 1.0);
-        return;
-    }
-    
-    // 下境界
-    if (isBottomBoundary) {
-        vec2 result = applyBoundaryCondition(coord, ivec2(0, 1), false, true);
-        fragColor = vec4(result, 0.0, 1.0);
-        return;
-    }
-    
-    // 上境界
-    if (isTopBoundary) {
-        vec2 result = applyBoundaryCondition(coord, ivec2(0, -1), false, true);
+    // 上下境界
+    if (isTopBoundary || isBottomBoundary){
+        vec2 normal = isBottomBoundary ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
+        vec2 value = restoreValue(texelFetch(u_bufferTexture, coord, 0).xy);
+        if (dot(normal, value) < 0.0) {
+            value.y = value.y * u_boundaryEffects;
+        }
+        vec2 result = compressValue(value);
         fragColor = vec4(result, 0.0, 1.0);
         return;
     }

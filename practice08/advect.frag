@@ -6,30 +6,49 @@ out vec4 fragColor;
 
 uniform float u_time;
 uniform vec2 u_resolution;
-uniform sampler2D u_textureToAdvect;
+
 uniform sampler2D u_velocityTexture;
+uniform sampler2D u_textureToAdvect;
 uniform float u_dissipationFactor;
 uniform float u_deltaTime;
+uniform float u_velocityScale;
 
-// FIXME: ベクトルの衝突境界でエネルギー保存則が破られている
-// FIXME: 8方向に制限されてしまう
+vec2 restoreVelocity(vec2 texValue) {
+    return texValue * u_velocityScale * 2.0 - u_velocityScale; // [0, 1] -> [0, 2vs] -> [-vs, vs]
+}
+
+vec2 compressVelocity(vec2 velocity) {
+    return (velocity + u_velocityScale) / (u_velocityScale * 2.0); // [-vs, vs] -> [0, 2vs] -> [0, 1]
+}
+
+vec2 sampleVelocity(sampler2D buffer, ivec2 coord) {
+    return restoreVelocity(texelFetch(u_velocityTexture, coord, 0).xy);
+}
+
 void main(){
-    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+    // v_new[x] = v[x - v[x] * dt]
 
+    // sample velocity
     ivec2 coord = ivec2(gl_FragCoord.xy);
-    vec2 velocity = texelFetch(u_velocityTexture, coord, 0).xy * 2.0 - 1.0; // [0, 1] -> [-1, 1]
+    vec2 velocity = sampleVelocity(u_velocityTexture, coord);
+    
+    // sample source coord
+    vec2 sourceCoord = gl_FragCoord.xy - velocity * u_deltaTime;
+    vec2 weight = fract(sourceCoord);
+    ivec2 baseCoord = ivec2(floor(sourceCoord));
 
-    velocity = mix(velocity, vec2(0.0), step(length(velocity), 0.01)); // 小さい速度は無視0; // [0, 1] -> [-1, 1]
-    vec2 offset = velocity * u_deltaTime;
+    // bilinear interpolation
+    vec2 v00 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord, 0).xy);
+    vec2 v10 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord + ivec2(1, 0), 0).xy);
+    vec2 v01 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord + ivec2(0, 1), 0).xy);
+    vec2 v11 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord + ivec2(1, 1), 0).xy);
+    vec2 value = mix(mix(v00, v10, weight.x), mix(v01, v11, weight.x), weight.y);
 
-    uv = uv - offset;
+    // dissipation
+    value = value * u_dissipationFactor;
+    value = mix(vec2(0.0), value, step(1.0, length(value)));
 
-    // 複数のテクセルをサンプリングして補間したいので、texture()を使う
-    vec2 sourceVelocity = texture(u_textureToAdvect, uv).xy;
-
-    sourceVelocity = sourceVelocity * 2.0 - 1.0; // [0, 1] -> [-1, 1]
-    sourceVelocity = sourceVelocity * u_dissipationFactor; // 減衰
-    sourceVelocity = (sourceVelocity + 1.0) * 0.5; // [-1, 1] -> [0, 1]
-
-    fragColor = vec4(sourceVelocity, 0.0, 0.0);
+    // back to texture range
+    value = compressVelocity(value);
+    fragColor = vec4(value, 0.0, 1.0);
 }
