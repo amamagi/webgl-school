@@ -61,8 +61,8 @@ class App {
   isMouseDown;     // マウスが押されているかどうかのフラグ
   enableLighting = false;    // ライティングを有効にするかどうかのフラグ
   showVelocity = true;   // 速度場を可視化するかどうかのフラグ
-  velocityScale = 10.0;   // 速度場のテクスチャと値のスケーリング係数 [0,1] -> [-velocityScale, velocityScale]
-  pressureScale = 10000000.0;   // 圧力場のテクスチャと値のスケーリング係数 [0,1] -> [-pressureScale, pressureScale]
+  velocityScale = 1.0;   // Float textures store actual values, no scaling needed
+  pressureScale = 1.0;   // Float textures store actual values, no scaling needed
   // deltaTime = 0.01;  // 前フレームからの経過時間（秒）
   deltaTime = 0.01;
   lastFrameTime = 0.0;
@@ -93,6 +93,18 @@ class App {
     // canvas エレメントの取得と WebGL コンテキストの初期化
     this.canvas = document.getElementById('webgl-canvas');
     this.gl = this.canvas.getContext('webgl2');
+
+    // Check WebGL2 support (float textures are natively supported in WebGL2)
+    if (!this.gl) {
+      throw new Error('WebGL2 not supported - this demo requires WebGL2 for native float texture support');
+    }
+    console.log('WebGL2 detected - float textures natively supported');
+
+    // Check for EXT_color_buffer_float extension
+    const ext = this.gl.getExtension('EXT_color_buffer_float');
+    if (!ext) {
+        console.error('EXT_color_buffer_float not supported');
+    }
 
     // カメラ制御用インスタンスを生成する
     const cameraOption = {
@@ -393,14 +405,13 @@ class App {
       bufferTexture: gl.getUniformLocation(this.program, 'u_bufferTexture'),
       enableLighting: gl.getUniformLocation(this.program, 'u_enableLighting'),
       is2d: gl.getUniformLocation(this.program, 'u_is2d'),
+      scale: gl.getUniformLocation(this.program, 'u_scale'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.solverProgram)], {
       initialTexture: gl.getUniformLocation(this.solverProgram, 'u_initialTexture'),
       bufferTexture: gl.getUniformLocation(this.solverProgram, 'u_bufferTexture'),
       centerFactor: gl.getUniformLocation(this.solverProgram, 'u_centerFactor'),
       beta: gl.getUniformLocation(this.solverProgram, 'u_beta'),
-      scale: gl.getUniformLocation(this.solverProgram, 'u_scale'),
-      offset: gl.getUniformLocation(this.solverProgram, 'u_offset'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.blitProgram)], {
       bufferTexture: gl.getUniformLocation(this.blitProgram, 'u_bufferTexture'),
@@ -412,25 +423,18 @@ class App {
       textureToAdvect: gl.getUniformLocation(this.advectionProgram, 'u_textureToAdvect'),
       dissipation: gl.getUniformLocation(this.advectionProgram, 'u_dissipationFactor'),
       deltaTime: gl.getUniformLocation(this.advectionProgram, 'u_deltaTime'),
-      velocityScale: gl.getUniformLocation(this.advectionProgram, 'u_velocityScale'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.divergentProgram)], {
       bufferTexture: gl.getUniformLocation(this.divergentProgram, 'u_bufferTexture'),
-      velocityScale: gl.getUniformLocation(this.divergentProgram, 'u_velocityScale'),
-      pressureScale: gl.getUniformLocation(this.divergentProgram, 'u_pressureScale'),
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.getDivFreeProgram)], {
       pressureTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_pressureTexture'),
-      velocityTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_velocityTexture'),
-      pressureTextureScale: gl.getUniformLocation(this.getDivFreeProgram, 'u_pressureTextureScale'),
-      velocityScale: gl.getUniformLocation(this.getDivFreeProgram, 'u_velocityScale')
+      velocityTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_velocityTexture')
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.boundaryProgram)], {
       bufferTexture: gl.getUniformLocation(this.boundaryProgram, 'u_bufferTexture'),
       dimension: gl.getUniformLocation(this.boundaryProgram, 'u_dimension'),
-      boundaryEffects: gl.getUniformLocation(this.boundaryProgram, 'u_boundaryEffects'),
-      bufferScale: gl.getUniformLocation(this.boundaryProgram, 'u_bufferScale'),
-      bufferOffset: gl.getUniformLocation(this.boundaryProgram, 'u_bufferOffset')
+      boundaryEffects: gl.getUniformLocation(this.boundaryProgram, 'u_boundaryEffects')
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.addVelocityProgram)], {
       bufferTexture: gl.getUniformLocation(this.addVelocityProgram, 'u_bufferTexture'),
@@ -438,8 +442,7 @@ class App {
       currentMouse: gl.getUniformLocation(this.addVelocityProgram, 'u_currentMouse'),
       effectRadius: gl.getUniformLocation(this.addVelocityProgram, 'u_effectRadius'),
       effectScale: gl.getUniformLocation(this.addVelocityProgram, 'u_effectScale'),
-      deltaTime: gl.getUniformLocation(this.addVelocityProgram, 'u_deltaTime'),
-      velocityScale: gl.getUniformLocation(this.addVelocityProgram, 'u_velocityScale')
+      deltaTime: gl.getUniformLocation(this.addVelocityProgram, 'u_deltaTime')
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.addDyeProgram)], {
       bufferTexture: gl.getUniformLocation(this.addDyeProgram, 'u_bufferTexture'),
@@ -460,10 +463,10 @@ class App {
 
     // クリアする色と深度を設定する
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clearDepth(1.0);
+    // gl.clearDepth(1.0);
 
     // 色と深度をクリアする
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
     // MVP行列の計算
     this.quadMvpMatrix = this.calcMvp();
@@ -525,7 +528,7 @@ class App {
     const gl = this.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, buffer.framebuffer);
     gl.clearColor(...clearColor);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
   }
 
   unbindTextures() {
@@ -565,13 +568,13 @@ class App {
       this.deleteFramebuffer(this.tempBufferB);
     } 
 
-    this.velocityBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-    this.velocityBufferTemp = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-    this.velocityDivergenceBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-    this.dyeBuffer = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-    this.dyeBufferTemp = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-    this.tempBufferA = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
-    this.tempBufferB = WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
+    this.velocityBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 4);
+    this.velocityBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 2);
+    this.velocityDivergenceBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.dyeBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.dyeBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.tempBufferA = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.tempBufferB = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
     this.shouldTargetA = true;
 
     // 各バッファの初期状態を設定
@@ -583,7 +586,7 @@ class App {
 
       // // 2. Bind Textures
       // gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
-      // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // gl.clear(gl.COLOR_BUFFER_BIT);
 
       // // 3. Bind Uniforms
       // this.bindBasicUniforms(program);
@@ -598,8 +601,8 @@ class App {
       // this.unbindTextures();
     }
 
-    this.clearBuffer(this.velocityBuffer, [0.5, 0.5, 0.0, 0.0]);
-    this.clearBuffer(this.velocityBufferTemp, [0.5, 0.5, 0.0, 0.0]);
+    this.clearBuffer(this.velocityBuffer, [0.0, 0.0, 0.0, 0.0]);
+    this.clearBuffer(this.velocityBufferTemp, [0.0, 0.0, 0.0, 0.0]);
 
     {
       // dyeBuffer の初期化
@@ -610,7 +613,7 @@ class App {
 
       // 2. Bind Textures
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.dyeBuffer.framebuffer);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.startingTexture);
 
@@ -644,7 +647,7 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
 
@@ -667,9 +670,7 @@ class App {
   diffuse(sourceBuffer, destBuffer, isDye=false) {
     const gl = this.gl;
 
-    const scale = isDye ? 1.0 : this.velocityScale;
-    const offset = isDye ? 0.0 : this.velocityScale;
-    const clearColor = isDye ? [0.0, 0.0, 0.0, 0.0] : [0.5, 0.5, 0.0, 0.0];
+    const clearColor = isDye ? [0.0, 0.0, 0.0, 0.0] : [0.0, 0.0, 0.0, 0.0];
     const viscosity = 0.5;
     const timeStep = this.deltaTime;
 
@@ -698,7 +699,7 @@ class App {
                                             : this.tempBufferA;
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
@@ -710,8 +711,6 @@ class App {
       this.bindBasicUniforms(program);
       gl.uniform1i(this.uniformLocations[programId].initialTexture, 0);
       gl.uniform1i(this.uniformLocations[programId].bufferTexture, 1);
-      gl.uniform1f(this.uniformLocations[programId].scale, scale);
-      gl.uniform1f(this.uniformLocations[programId].offset, offset);
       gl.uniform1f(this.uniformLocations[programId].centerFactor, centerFactor);
       gl.uniform1f(this.uniformLocations[programId].beta, beta);
 
@@ -761,7 +760,7 @@ class App {
       // target
       newdPressureBuffer = this.shouldTargetA ? this.tempBufferA : this.tempBufferB;
       gl.bindFramebuffer(gl.FRAMEBUFFER, newdPressureBuffer.framebuffer);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       // source
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.velocityDivergenceBuffer.texture);
@@ -776,8 +775,6 @@ class App {
       gl.uniform1f(this.uniformLocations[programId].beta, beta);
       gl.uniform1i(this.uniformLocations[programId].initialTexture, 0);
       gl.uniform1i(this.uniformLocations[programId].bufferTexture, 1);
-      gl.uniform1f(this.uniformLocations[programId].scale, pressureScale);
-      gl.uniform1f(this.uniformLocations[programId].offset, pressureScale);
 
       // 4. Bind Attributes
       WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -803,15 +800,13 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
 
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
-    gl.uniform1f(this.uniformLocations[programId].velocityScale, this.velocityScale);
-    gl.uniform1f(this.uniformLocations[programId].pressureScale, pressureScale);
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -833,7 +828,7 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, pressureBuffer.texture);
     gl.activeTexture(gl.TEXTURE1);
@@ -843,8 +838,6 @@ class App {
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].pressureTexture, 0);
     gl.uniform1i(this.uniformLocations[programId].velocityTexture, 1);
-    gl.uniform1f(this.uniformLocations[programId].pressureTextureScale, pressureBufferScale);
-    gl.uniform1f(this.uniformLocations[programId].velocityScale, this.velocityScale);
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -866,7 +859,7 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textureToAdvect.texture);
     gl.activeTexture(gl.TEXTURE1);
@@ -878,7 +871,6 @@ class App {
     gl.uniform1f(this.uniformLocations[programId].deltaTime, this.deltaTime);
     gl.uniform1i(this.uniformLocations[programId].textureToAdvect, 0);
     gl.uniform1i(this.uniformLocations[programId].velocityTexture, 1);
-    gl.uniform1f(this.uniformLocations[programId].velocityScale, this.velocityScale);
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -894,7 +886,7 @@ class App {
     const gl = this.gl;
 
     const scale = isDye ? 1.0 : this.velocityScale;
-    const offset = isDye ? 0.0 : this.velocityScale;
+    const offset = isDye ? 0.0 : 0.0;
     const dimension = isDye ? 1 : 2;
 
     // 1. Use Program
@@ -904,7 +896,7 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
 
@@ -912,8 +904,6 @@ class App {
     this.bindBasicUniforms(program);
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
     gl.uniform1i(this.uniformLocations[programId].dimension, dimension);
-    gl.uniform1f(this.uniformLocations[programId].bufferScale, scale);
-    gl.uniform1f(this.uniformLocations[programId].bufferOffset, offset);
     gl.uniform1f(this.uniformLocations[programId].boundaryEffects, boundaryEffects);
 
     // 4. Bind Attributes
@@ -926,17 +916,17 @@ class App {
     this.unbindTextures();
   }
 
-  visualize(buffer, is2d=false) {
+  visualize(buffer, is2d=false, scale=1.0) {
     const gl = this.gl;
 
     // 1. Use Program
-    const program = this.blitProgram;
+    const program = this.program;
     const programId = this.getProgramId(program);
     gl.useProgram(program);
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, buffer.texture);
 
@@ -945,6 +935,7 @@ class App {
     gl.uniform1i(this.uniformLocations[programId].bufferTexture, 0);
     gl.uniform1i(this.uniformLocations[programId].enableLighting, this.enableLighting ? 1 : 0);
     gl.uniform1i(this.uniformLocations[programId].is2d, is2d ? 1 : 0);
+    gl.uniform1f(this.uniformLocations[programId].scale, scale);
 
     // 4. Bind Attribute
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -1008,7 +999,7 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
 
@@ -1020,7 +1011,7 @@ class App {
     gl.uniform1f(this.uniformLocations[programId].effectRadius, effectRadius);
     gl.uniform1f(this.uniformLocations[programId].effectScale, effectScale);
     gl.uniform1f(this.uniformLocations[programId].deltaTime, this.deltaTime);
-    gl.uniform1f(this.uniformLocations[programId].velocityScale, this.velocityScale);
+    // Velocity scale uniform removed for float textures
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -1047,7 +1038,7 @@ class App {
 
     // 2. Bind Textures
     gl.bindFramebuffer(gl.FRAMEBUFFER, destBuffer.framebuffer);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, sourceBuffer.texture);
 
@@ -1106,14 +1097,14 @@ class App {
     this.visualize(this.velocityBuffer, true);
 
     this.diffuse(this.velocityBuffer, this.velocityBufferTemp);
-    this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
-    this.project(this.velocityBuffer, this.velocityBufferTemp);
+    // this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
+    // this.project(this.velocityBuffer, this.velocityBufferTemp);
 
-    this.blit(this.velocityBufferTemp, this.velocityBuffer);
+    // this.blit(this.velocityBufferTemp, this.velocityBuffer);
 
-    this.advect(this.velocityBuffer, this.velocityBuffer, this.velocityBufferTemp, 0.99);
-    this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
-    this.project(this.velocityBuffer, this.velocityBufferTemp);
+    // this.advect(this.velocityBuffer, this.velocityBuffer, this.velocityBufferTemp, 0.99);
+    // this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
+    // this.project(this.velocityBuffer, this.velocityBufferTemp);
 
     const t= performance.now() * 0.001;
     if ( Math.floor(t) % 2 == 0) {
@@ -1150,11 +1141,6 @@ class App {
     this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
     this.project(this.velocityBuffer, this.velocityBufferTemp);
    
-    // this.blit(this.velocityBufferTemp, this.velocityBuffer);
-    // this.blit(this.velocityBuffer, this.velocityBufferTemp);
-
-    // Projectがおかしい絶対
-    // 
     this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.99);
     this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
     this.project(this.velocityBufferTemp, this.velocityBuffer);
@@ -1162,10 +1148,10 @@ class App {
     // this.blit(this.velocityBufferTemp, this.velocityBuffer);
     
     // --- dye ---
-    // this.diffuse(this.dyeBuffer, this.dyeBufferTemp, true);
-    // this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
-    // this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
-    // this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
+    this.diffuse(this.dyeBuffer, this.dyeBufferTemp, true);
+    this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
+    this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
+    this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
 
     if (this.showVelocity){
       this.visualize(this.velocityBuffer, true);

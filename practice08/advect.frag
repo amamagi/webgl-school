@@ -11,18 +11,9 @@ uniform sampler2D u_velocityTexture;
 uniform sampler2D u_textureToAdvect;
 uniform float u_dissipationFactor;
 uniform float u_deltaTime;
-uniform float u_velocityScale;
-
-vec2 restoreVelocity(vec2 texValue) {
-    return texValue * u_velocityScale * 2.0 - u_velocityScale; // [0, 1] -> [0, 2vs] -> [-vs, vs]
-}
-
-vec2 compressVelocity(vec2 velocity) {
-    return (velocity + u_velocityScale) / (u_velocityScale * 2.0); // [-vs, vs] -> [0, 2vs] -> [0, 1]
-}
 
 vec2 sampleVelocity(sampler2D buffer, ivec2 coord) {
-    return restoreVelocity(texelFetch(u_velocityTexture, coord, 0).xy);
+    return texelFetch(u_velocityTexture, coord, 0).xy;
 }
 
 void main(){
@@ -37,18 +28,17 @@ void main(){
     vec2 weight = fract(sourceCoord);
     ivec2 baseCoord = ivec2(floor(sourceCoord));
 
-    // bilinear interpolation
-    vec2 v00 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord, 0).xy);
-    vec2 v10 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord + ivec2(1, 0), 0).xy);
-    vec2 v01 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord + ivec2(0, 1), 0).xy);
-    vec2 v11 = restoreVelocity(texelFetch(u_textureToAdvect, baseCoord + ivec2(1, 1), 0).xy);
+    // bilinear interpolation - direct float texture reads
+    vec2 v00 = texelFetch(u_textureToAdvect, baseCoord, 0).xy;
+    vec2 v10 = texelFetch(u_textureToAdvect, baseCoord + ivec2(1, 0), 0).xy;
+    vec2 v01 = texelFetch(u_textureToAdvect, baseCoord + ivec2(0, 1), 0).xy;
+    vec2 v11 = texelFetch(u_textureToAdvect, baseCoord + ivec2(1, 1), 0).xy;
     vec2 value = mix(mix(v00, v10, weight.x), mix(v01, v11, weight.x), weight.y);
 
     // dissipation
     value = value * u_dissipationFactor;
     value = mix(vec2(0.0), value, step(1.0, length(value)));
 
-    // back to texture range
-    value = compressVelocity(value);
+    // direct output - no compression needed for float textures
     fragColor = vec4(value, 0.0, 1.0);
 }

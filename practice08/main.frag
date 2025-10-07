@@ -9,6 +9,7 @@ uniform vec2 u_resolution;
 uniform sampler2D u_bufferTexture;
 uniform bool u_enableLighting;
 uniform bool u_is2d;
+uniform float u_scale;
 
 vec3 light = normalize(vec3(1.0, 1.0, 1.0));
 
@@ -31,7 +32,9 @@ vec2 grad2(vec2 p){
   float eps = 0.001;
   vec2 x = base22(p + vec2(eps, 0.0)) - base22(p - vec2(eps, 0.0));
   vec2 y = base22(p + vec2(0.0, eps)) - base22(p - vec2(0.0, eps));
-  return vec2(x.x + y.y, x.y + y.x) / (2.0 * eps);
+  x = x * u_scale;
+  y = y * u_scale;
+  return (x + y) / (2.0 * eps);
 }
 
 
@@ -62,6 +65,7 @@ void main(){
 
     if (u_is2d){
       vec2 v = texture(u_bufferTexture, pos).xy * 2.0 - 1.0;
+      v = (v * u_scale);
       vec3 normal = normalize(vec3(grad2(pos), 1.0));
       float lambert = dot(-normal, -light);
       vec3 color = vec3(1.0);
