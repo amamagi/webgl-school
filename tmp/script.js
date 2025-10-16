@@ -289,55 +289,55 @@ class App {
         const fragmentShader = WebGLUtility.createShaderObject(gl, FSSource, gl.FRAGMENT_SHADER);
         this.program = WebGLUtility.createProgramObject(gl, vertexShader, fragmentShader);
 
-        // const solverFSource = await WebGLUtility.loadFile('./jacobi_solver.frag');
-        // const solverVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const solverFShader = WebGLUtility.createShaderObject(gl, solverFSource, gl.FRAGMENT_SHADER);
-        // this.solverProgram = WebGLUtility.createProgramObject(gl, solverVShader, solverFShader);
+        const solverFSource = await WebGLUtility.loadFile('./jacobi_solver.frag');
+        const solverVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const solverFShader = WebGLUtility.createShaderObject(gl, solverFSource, gl.FRAGMENT_SHADER);
+        this.solverProgram = WebGLUtility.createProgramObject(gl, solverVShader, solverFShader);
 
-        // const advectionFSource = await WebGLUtility.loadFile('./advect.frag');
-        // const advectionVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const advectionFShader = WebGLUtility.createShaderObject(gl, advectionFSource, gl.FRAGMENT_SHADER);
-        // this.advectionProgram = WebGLUtility.createProgramObject(gl, advectionVShader, advectionFShader);
+        const advectionFSource = await WebGLUtility.loadFile('./advect.frag');
+        const advectionVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const advectionFShader = WebGLUtility.createShaderObject(gl, advectionFSource, gl.FRAGMENT_SHADER);
+        this.advectionProgram = WebGLUtility.createProgramObject(gl, advectionVShader, advectionFShader);
 
-        // const blitFSource = await WebGLUtility.loadFile('./blit.frag');
-        // const blitVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const blitFShader = WebGLUtility.createShaderObject(gl, blitFSource, gl.FRAGMENT_SHADER);
-        // this.blitProgram = WebGLUtility.createProgramObject(gl, blitVShader, blitFShader);
+        const blitFSource = await WebGLUtility.loadFile('./blit.frag');
+        const blitVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const blitFShader = WebGLUtility.createShaderObject(gl, blitFSource, gl.FRAGMENT_SHADER);
+        this.blitProgram = WebGLUtility.createProgramObject(gl, blitVShader, blitFShader);
 
         const perlinFSource = await WebGLUtility.loadFile('./perlin.frag');
         const perlinVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
         const perlinFShader = WebGLUtility.createShaderObject(gl, perlinFSource, gl.FRAGMENT_SHADER);
         this.perlinProgram = WebGLUtility.createProgramObject(gl, perlinVShader, perlinFShader);
 
-        // const divergentFSource = await WebGLUtility.loadFile('./divergent.frag');
-        // const divergentVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const divergentFShader = WebGLUtility.createShaderObject(gl, divergentFSource, gl.FRAGMENT_SHADER);
-        // this.divergentProgram = WebGLUtility.createProgramObject(gl, divergentVShader, divergentFShader);
+        const divergentFSource = await WebGLUtility.loadFile('./divergent.frag');
+        const divergentVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const divergentFShader = WebGLUtility.createShaderObject(gl, divergentFSource, gl.FRAGMENT_SHADER);
+        this.divergentProgram = WebGLUtility.createProgramObject(gl, divergentVShader, divergentFShader);
 
-        // const getDivFreeFSource = await WebGLUtility.loadFile('./get_div_free.frag');
-        // const getDivFreeVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const getDivFreeFShader = WebGLUtility.createShaderObject(gl, getDivFreeFSource, gl.FRAGMENT_SHADER);
-        // this.getDivFreeProgram = WebGLUtility.createProgramObject(gl, getDivFreeVShader, getDivFreeFShader);
+        const getDivFreeFSource = await WebGLUtility.loadFile('./get_div_free.frag');
+        const getDivFreeVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const getDivFreeFShader = WebGLUtility.createShaderObject(gl, getDivFreeFSource, gl.FRAGMENT_SHADER);
+        this.getDivFreeProgram = WebGLUtility.createProgramObject(gl, getDivFreeVShader, getDivFreeFShader);
 
-        // const boundaryFSource = await WebGLUtility.loadFile('./boundary.frag');
-        // const boundaryVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const boundaryFShader = WebGLUtility.createShaderObject(gl, boundaryFSource, gl.FRAGMENT_SHADER);
-        // this.boundaryProgram = WebGLUtility.createProgramObject(gl, boundaryVShader, boundaryFShader);
+        const boundaryFSource = await WebGLUtility.loadFile('./boundary.frag');
+        const boundaryVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const boundaryFShader = WebGLUtility.createShaderObject(gl, boundaryFSource, gl.FRAGMENT_SHADER);
+        this.boundaryProgram = WebGLUtility.createProgramObject(gl, boundaryVShader, boundaryFShader);
 
-        // const addVelocityFSource = await WebGLUtility.loadFile('./addVelocity.frag');
-        // const addVelocityVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const addVelocityFShader = WebGLUtility.createShaderObject(gl, addVelocityFSource, gl.FRAGMENT_SHADER);
-        // this.addVelocityProgram = WebGLUtility.createProgramObject(gl, addVelocityVShader, addVelocityFShader);
+        const addVelocityFSource = await WebGLUtility.loadFile('./addVelocity.frag');
+        const addVelocityVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const addVelocityFShader = WebGLUtility.createShaderObject(gl, addVelocityFSource, gl.FRAGMENT_SHADER);
+        this.addVelocityProgram = WebGLUtility.createProgramObject(gl, addVelocityVShader, addVelocityFShader);
 
-        // const addDyeFSource = await WebGLUtility.loadFile('./addDye.frag');
-        // const addDyeVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
-        // const addDyeFShader = WebGLUtility.createShaderObject(gl, addDyeFSource, gl.FRAGMENT_SHADER);
-        // this.addDyeProgram = WebGLUtility.createProgramObject(gl, addDyeVShader, addDyeFShader);
+        const addDyeFSource = await WebGLUtility.loadFile('./addDye.frag');
+        const addDyeVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const addDyeFShader = WebGLUtility.createShaderObject(gl, addDyeFSource, gl.FRAGMENT_SHADER);
+        this.addDyeProgram = WebGLUtility.createProgramObject(gl, addDyeVShader, addDyeFShader);
 
 
-        // await WebGLUtility.loadImage('../textures/earth.jpg').then((image) => {
-        //   this.startingTexture = WebGLUtility.createTexture(gl, image);
-        // });
+        await WebGLUtility.loadImage('../textures/earth.jpg').then((image) => {
+          this.startingTexture = WebGLUtility.createTexture(gl, image);
+        });
 
         // Promise を解決
         resolve();
@@ -392,8 +392,8 @@ class App {
 
     // --- uniform ---
     // uniform location の取得
-    for (let program of [this.program, this.perlinProgram]){//}, this.advectionProgram, this.solverProgram, this.blitProgram, 
-      // this.divergentProgram, this.getDivFreeProgram, this.boundaryProgram, this.addVelocityProgram, this.addDyeProgram]) {
+    for (let program of [this.program, this.perlinProgram, this.advectionProgram, this.solverProgram, this.blitProgram, 
+      this.divergentProgram, this.getDivFreeProgram, this.boundaryProgram, this.addVelocityProgram, this.addDyeProgram]) {
       this.uniformLocations[this.getProgramId(program)] = {
         time: gl.getUniformLocation(program, 'u_time'),
         resolution: gl.getUniformLocation(program, 'u_resolution'),
@@ -407,50 +407,50 @@ class App {
       minValue: gl.getUniformLocation(this.program, 'u_minValue'),
       maxValue: gl.getUniformLocation(this.program, 'u_maxValue'),
     });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.solverProgram)], {
-    //   initialTexture: gl.getUniformLocation(this.solverProgram, 'u_initialTexture'),
-    //   bufferTexture: gl.getUniformLocation(this.solverProgram, 'u_bufferTexture'),
-    //   centerFactor: gl.getUniformLocation(this.solverProgram, 'u_centerFactor'),
-    //   beta: gl.getUniformLocation(this.solverProgram, 'u_beta'),
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.blitProgram)], {
-    //   bufferTexture: gl.getUniformLocation(this.blitProgram, 'u_bufferTexture'),
-    //   invertY: gl.getUniformLocation(this.blitProgram, 'u_invertY'),
-    //   grayScale: gl.getUniformLocation(this.blitProgram, 'u_grayScale'),
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.advectionProgram)], {
-    //   velocityTexture: gl.getUniformLocation(this.advectionProgram, 'u_velocityTexture'),
-    //   textureToAdvect: gl.getUniformLocation(this.advectionProgram, 'u_textureToAdvect'),
-    //   dissipation: gl.getUniformLocation(this.advectionProgram, 'u_dissipationFactor'),
-    //   deltaTime: gl.getUniformLocation(this.advectionProgram, 'u_deltaTime'),
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.divergentProgram)], {
-    //   bufferTexture: gl.getUniformLocation(this.divergentProgram, 'u_bufferTexture'),
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.getDivFreeProgram)], {
-    //   pressureTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_pressureTexture'),
-    //   velocityTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_velocityTexture')
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.boundaryProgram)], {
-    //   bufferTexture: gl.getUniformLocation(this.boundaryProgram, 'u_bufferTexture'),
-    //   dimension: gl.getUniformLocation(this.boundaryProgram, 'u_dimension'),
-    //   boundaryEffects: gl.getUniformLocation(this.boundaryProgram, 'u_boundaryEffects')
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.addVelocityProgram)], {
-    //   bufferTexture: gl.getUniformLocation(this.addVelocityProgram, 'u_bufferTexture'),
-    //   previousMouse: gl.getUniformLocation(this.addVelocityProgram, 'u_previousMouse'),
-    //   currentMouse: gl.getUniformLocation(this.addVelocityProgram, 'u_currentMouse'),
-    //   effectRadius: gl.getUniformLocation(this.addVelocityProgram, 'u_effectRadius'),
-    //   effectScale: gl.getUniformLocation(this.addVelocityProgram, 'u_effectScale'),
-    //   deltaTime: gl.getUniformLocation(this.addVelocityProgram, 'u_deltaTime')
-    // });
-    // Object.assign(this.uniformLocations[this.getProgramId(this.addDyeProgram)], {
-    //   bufferTexture: gl.getUniformLocation(this.addDyeProgram, 'u_bufferTexture'),
-    //   previousMouse: gl.getUniformLocation(this.addDyeProgram, 'u_previousMouse'),
-    //   currentMouse: gl.getUniformLocation(this.addDyeProgram, 'u_currentMouse'),
-    //   effectRadius: gl.getUniformLocation(this.addDyeProgram, 'u_effectRadius'),
-    //   effectScale: gl.getUniformLocation(this.addDyeProgram, 'u_effectScale'),
-    // });
+    Object.assign(this.uniformLocations[this.getProgramId(this.solverProgram)], {
+      initialTexture: gl.getUniformLocation(this.solverProgram, 'u_initialTexture'),
+      bufferTexture: gl.getUniformLocation(this.solverProgram, 'u_bufferTexture'),
+      centerFactor: gl.getUniformLocation(this.solverProgram, 'u_centerFactor'),
+      beta: gl.getUniformLocation(this.solverProgram, 'u_beta'),
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.blitProgram)], {
+      bufferTexture: gl.getUniformLocation(this.blitProgram, 'u_bufferTexture'),
+      invertY: gl.getUniformLocation(this.blitProgram, 'u_invertY'),
+      grayScale: gl.getUniformLocation(this.blitProgram, 'u_grayScale'),
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.advectionProgram)], {
+      velocityTexture: gl.getUniformLocation(this.advectionProgram, 'u_velocityTexture'),
+      textureToAdvect: gl.getUniformLocation(this.advectionProgram, 'u_textureToAdvect'),
+      dissipation: gl.getUniformLocation(this.advectionProgram, 'u_dissipationFactor'),
+      deltaTime: gl.getUniformLocation(this.advectionProgram, 'u_deltaTime'),
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.divergentProgram)], {
+      bufferTexture: gl.getUniformLocation(this.divergentProgram, 'u_bufferTexture'),
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.getDivFreeProgram)], {
+      pressureTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_pressureTexture'),
+      velocityTexture: gl.getUniformLocation(this.getDivFreeProgram, 'u_velocityTexture')
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.boundaryProgram)], {
+      bufferTexture: gl.getUniformLocation(this.boundaryProgram, 'u_bufferTexture'),
+      dimension: gl.getUniformLocation(this.boundaryProgram, 'u_dimension'),
+      boundaryEffects: gl.getUniformLocation(this.boundaryProgram, 'u_boundaryEffects')
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.addVelocityProgram)], {
+      bufferTexture: gl.getUniformLocation(this.addVelocityProgram, 'u_bufferTexture'),
+      previousMouse: gl.getUniformLocation(this.addVelocityProgram, 'u_previousMouse'),
+      currentMouse: gl.getUniformLocation(this.addVelocityProgram, 'u_currentMouse'),
+      effectRadius: gl.getUniformLocation(this.addVelocityProgram, 'u_effectRadius'),
+      effectScale: gl.getUniformLocation(this.addVelocityProgram, 'u_effectScale'),
+      deltaTime: gl.getUniformLocation(this.addVelocityProgram, 'u_deltaTime')
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.addDyeProgram)], {
+      bufferTexture: gl.getUniformLocation(this.addDyeProgram, 'u_bufferTexture'),
+      previousMouse: gl.getUniformLocation(this.addDyeProgram, 'u_previousMouse'),
+      currentMouse: gl.getUniformLocation(this.addDyeProgram, 'u_currentMouse'),
+      effectRadius: gl.getUniformLocation(this.addDyeProgram, 'u_effectRadius'),
+      effectScale: gl.getUniformLocation(this.addDyeProgram, 'u_effectScale'),
+    });
   }
 
   /**
@@ -569,13 +569,13 @@ class App {
     } 
 
     this.velocityBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 4);
-    // this.velocityBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 2);
-    // this.velocityDivergenceBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    // this.dyeBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    // this.dyeBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    // this.tempBufferA = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    // this.tempBufferB = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    // this.shouldTargetA = true;
+    this.velocityBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 2);
+    this.velocityDivergenceBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.dyeBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.dyeBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.tempBufferA = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.tempBufferB = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.shouldTargetA = true;
 
     // 各バッファの初期状態を設定
     {
