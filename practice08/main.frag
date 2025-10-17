@@ -1,92 +1,51 @@
 #version 300 es
 precision highp float;
-precision highp int;
 
+uniform vec2 u_resolution;
+uniform sampler2D u_floatTexture;
+in vec2 vTexCoord;
 out vec4 fragColor;
 
-uniform float u_time;
-uniform vec2 u_resolution;
-uniform sampler2D u_bufferTexture;
-uniform bool u_enableLighting;
-uniform bool u_is2d;
-uniform float u_scale;
+// 可視化モード
+uniform int u_visualizationMode; // 0: grayscale, 1: heatmap, 2: raw RGB
 
-vec3 light = normalize(vec3(1.0, 1.0, 1.0));
+// 値の範囲を正規化するためのパラメータ
+uniform float u_minValue;
+uniform float u_maxValue;
 
-float base21(vec2 p){
-    return texture(u_bufferTexture, p).x;
+// ヒートマップカラー関数
+vec3 heatmap(float value) {
+    // 0.0 ~ 1.0 の値を青→緑→黄→赤のグラデーションに変換
+    vec3 color;
+    value = clamp(value, 0.0, 1.0);
+    
+    if (value < 0.25) {
+        // 青 → シアン
+        color = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), value * 4.0);
+    } else if (value < 0.5) {
+        // シアン → 緑
+        color = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), (value - 0.25) * 4.0);
+    } else if (value < 0.75) {
+        // 緑 → 黄
+        color = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), (value - 0.5) * 4.0);
+    } else {
+        // 黄 → 赤
+        color = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), (value - 0.75) * 4.0);
+    }
+    
+    return color;
 }
 
-vec2 base22(vec2 p){
-    return texture(u_bufferTexture, p).xy;
-}
-
-vec2 grad(vec2 p){
-  float eps = 0.001;
-  float x = base21(p + vec2(eps, 0.0)) - base21(p - vec2(eps, 0.0));
-  float y = base21(p + vec2(0.0, eps)) - base21(p - vec2(0.0, eps));
-  return vec2(x, y) / (2.0 * eps);
-}
-
-vec2 grad2(vec2 p){
-  float eps = 0.001;
-  vec2 x = base22(p + vec2(eps, 0.0)) - base22(p - vec2(eps, 0.0));
-  vec2 y = base22(p + vec2(0.0, eps)) - base22(p - vec2(0.0, eps));
-  x = x * u_scale;
-  y = y * u_scale;
-  return (x + y) / (2.0 * eps);
-}
-
-
-vec3[] ctable = vec3[](
-  vec3(0.3529, 0.5294, 0.6941),
-  vec3(0.4235, 0.5686, 0.702),
-  vec3(0.6078, 0.6235, 0.8),
-  vec3(0.6863, 0.6667, 0.7882),
-  vec3(0.8588, 0.7098, 0.8353),
-  vec3(0.8863, 0.8941, 0.749),
-  vec3(0.7725, 0.8784, 0.749),
-  vec3(0.66, 0.87, 0.93)
-);
-
-vec3 rainbow(float v){
-  //v = clamp(v, 0.0, 1.0);
-  float size = 7.0;
-  int ch = int(v * size);
-  vec3 s = ctable[ch];
-  vec3 g = ctable[ch+1];
-  return mix(s, g, fract(v*size));//smoothstep(0.0, 1.0, fract(v * size)));
-}
-
-
-
-void main(){
+void main() {
     vec2 pos = gl_FragCoord.xy / u_resolution.xy;
+    // FLOATテクスチャから値を読み出し
+    vec4 floatValue = texture(u_floatTexture, pos);
+    
+    // 正規化（minValue ~ maxValue を 0.0 ~ 1.0 にマッピング）
+    vec4 normalized = (floatValue - u_minValue) / (u_maxValue - u_minValue);
+    normalized = clamp(normalized, 0.0, 1.0);
 
-    if (u_is2d){
-      vec2 v = texture(u_bufferTexture, pos).xy * 2.0 - 1.0;
-      v = (v * u_scale);
-      vec3 normal = normalize(vec3(grad2(pos), 1.0));
-      float lambert = dot(-normal, -light);
-      vec3 color = vec3(1.0);
-      if (u_enableLighting){
-        color = vec3(lambert);
-      }
-      color *= rainbow(length(v));
-      // color *= vec3(length(v));
-      fragColor = vec4(color, 1.0);
-      return;
-    }
+    vec3 color = normalized.rgb;
 
-    vec3 normal = normalize(vec3(grad(pos), 1.0));
-    float lambert = dot(-normal, -light);
-    vec3 color = vec3(1.0);
-    if(u_enableLighting){
-      color = vec3(lambert);
-    }
-    float v = texture(u_bufferTexture, pos).x;
-    v = pow(v, 0.8);
-    v = mix(0.5, v, 0.5);
-    color *= rainbow(v);
     fragColor = vec4(color, 1.0);
 }
