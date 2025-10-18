@@ -22,6 +22,6 @@ void main(){
     vec2 up     = texelFetch(u_bufferTexture, ivec2(gl_FragCoord.xy + vec2(0.0, 1.0)), 0).xy;
     vec2 down   = texelFetch(u_bufferTexture, ivec2(gl_FragCoord.xy - vec2(0.0, 1.0)), 0).xy;
 
-    vec2 value = (left + right + up + down + (u_centerFactor * center)) * u_beta;
+    vec2 value = (left + right + up + down + (center * u_centerFactor)) * u_beta;
     fragColor = vec4(value, 0.0, 0.0);
 }

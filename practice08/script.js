@@ -60,7 +60,7 @@ class App {
   preveMouseMoveEvent; // 1フレーム前のマウス移動イベント
   isMouseDown;     // マウスが押されているかどうかのフラグ
   enableLighting = false;    // ライティングを有効にするかどうかのフラグ
-  showVelocity = true;   // 速度場を可視化するかどうかのフラグ
+  showVelocity = false;   // 速度場を可視化するかどうかのフラグ
   // deltaTime = 0.01;  // 前フレームからの経過時間（秒）
   deltaTime = 0.01;
   lastFrameTime = 0.0;
@@ -571,8 +571,8 @@ class App {
     this.velocityDivergenceBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
     this.dyeBuffer = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
     this.dyeBufferTemp = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    this.tempBufferA = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
-    this.tempBufferB = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 1);
+    this.tempBufferA = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 2);
+    this.tempBufferB = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 2);
     this.shouldTargetA = true;
 
     // 各バッファの初期状態を設定
@@ -668,7 +668,6 @@ class App {
   diffuse(sourceBuffer, destBuffer) {
     const gl = this.gl;
 
-    const clearColor = [0.0, 0.0, 0.0, 0.0];
     const viscosity = 0.5;
     const timeStep = this.deltaTime * 100;
 
@@ -678,8 +677,8 @@ class App {
     const centerFactor = 1.0 / (viscosity * timeStep);
     const beta = (viscosity * timeStep) / (1.0 + 4.0 * viscosity * timeStep);
 
-    this.clearBuffer(this.tempBufferA, clearColor);
-    this.clearBuffer(this.tempBufferB, clearColor);
+    this.clearBuffer(this.tempBufferA);
+    this.clearBuffer(this.tempBufferB);
 
     // 1. Use Program
     let program = this.solverProgram;
@@ -1137,10 +1136,9 @@ class App {
     this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
     this.project(this.velocityBuffer, this.velocityBufferTemp);
 
-
     this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.99);
-    // this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
-    // this.project(this.velocityBufferTemp, this.velocityBuffer);
+    this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
+    this.project(this.velocityBufferTemp, this.velocityBuffer);
     
     // this.blit(this.velocityBufferTemp, this.velocityBuffer);
     
@@ -1155,18 +1153,6 @@ class App {
       this.visualize(this.velocityBuffer, 0, -1, 1);
     } else {
       this.visualize(this.dyeBuffer);
-    }
-    return;
-
-    const now = performance.now() * 0.001;
-    if (Math.floor(now*3) % 2 == 0) {
-      if (this.showVelocity) {
-        this.visualize(this.velocityBuffer, 0, -10, 10);
-      } else {
-        this.visualize(this.dyeBuffer);
-      }
-    }else{
-      this.visualize(this.tempBufferA);
     }
   }
 }

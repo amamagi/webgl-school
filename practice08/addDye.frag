@@ -22,8 +22,8 @@ void main(){
     float distanceToMouse = length(pixelPos - u_currentMouse);
     float effect = exp(-distanceToMouse * distanceToMouse / (u_effectRadius * u_effectRadius));
 
-    vec4 newValue = currentValue + effect * u_effectScale; // 効果を強調
-    newValue = clamp(newValue, 0.0, 1.0); // 制限
+    vec4 newValue = currentValue + effect * u_effectScale * 100.0; // 効果を強調
+    // newValue = clamp(newValue, 0.0, 1.0); // 制限
 
     fragColor = newValue;
 }

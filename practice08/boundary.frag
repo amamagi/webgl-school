@@ -15,7 +15,7 @@ void main() {
     ivec2 resolution = ivec2(u_resolution);
     
     // 境界判定
-    int range = 4; // 境界とみなす範囲
+    int range = 1; // 境界とみなす範囲
     bool isLeftBoundary = coord.x < range;
     bool isRightBoundary = coord.x >= (resolution.x - range);
     bool isBottomBoundary = coord.y < range;
@@ -26,7 +26,6 @@ void main() {
             fragColor = texelFetch(u_bufferTexture, coord, 0);
             return;
         }
-        // Direct float texture read and manipulation
         vec2 value = texelFetch(u_bufferTexture, coord, 0).xy;
         value = value * u_boundaryEffects;
         fragColor = vec4(value, 0.0, 1.0);
@@ -36,7 +35,7 @@ void main() {
     // 左右境界
     if (isLeftBoundary || isRightBoundary){
         vec2 normal = isLeftBoundary ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
-        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy; // Direct float texture read
+        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy; 
         if (dot(normal, value) < 0.0) {
             value.x = value.x * u_boundaryEffects;
         }
@@ -47,7 +46,7 @@ void main() {
     // 上下境界
     if (isTopBoundary || isBottomBoundary){
         vec2 normal = isBottomBoundary ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
-        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy; // Direct float texture read
+        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy;
         if (dot(normal, value) < 0.0) {
             value.y = value.y * u_boundaryEffects;
         }
