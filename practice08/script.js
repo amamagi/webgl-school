@@ -61,7 +61,7 @@ class App {
   isMouseDown;     // マウスが押されているかどうかのフラグ
   enableLighting = false;    // ライティングを有効にするかどうかのフラグ
   showVelocity = false;   // 速度場を可視化するかどうかのフラグ
-  // deltaTime = 0.01;  // 前フレームからの経過時間（秒）
+  timeScale = 100.0;
   deltaTime = 0.01;
   lastFrameTime = 0.0;
 
@@ -242,7 +242,7 @@ class App {
     // Tweakpane を使った GUI の設定
     const pane = new Pane();
     const parameter = {
-      lighting: this.enableLighting,
+      // lighting: this.enableLighting,
       showVelocity: this.showVelocity
     };
     // テクスチャの初期化
@@ -250,9 +250,9 @@ class App {
       this.initializeBuffer();
     });
     // ライティングのON/OFF
-    pane.addBinding(parameter, 'lighting').on('change', (v) => {
-      this.enableLighting = v.value;
-    });
+    // pane.addBinding(parameter, 'lighting').on('change', (v) => {
+    //   this.enableLighting = v.value;
+    // });
     // 速度場の可視化ON/OFF
     pane.addBinding(parameter, 'showVelocity').on('change', (v) => {
       this.showVelocity = v.value;
@@ -440,7 +440,6 @@ class App {
       currentMouse: gl.getUniformLocation(this.addVelocityProgram, 'u_currentMouse'),
       effectRadius: gl.getUniformLocation(this.addVelocityProgram, 'u_effectRadius'),
       effectScale: gl.getUniformLocation(this.addVelocityProgram, 'u_effectScale'),
-      deltaTime: gl.getUniformLocation(this.addVelocityProgram, 'u_deltaTime')
     });
     Object.assign(this.uniformLocations[this.getProgramId(this.addDyeProgram)], {
       bufferTexture: gl.getUniformLocation(this.addDyeProgram, 'u_bufferTexture'),
@@ -665,11 +664,10 @@ class App {
     this.unbindTextures();
   }
 
-  diffuse(sourceBuffer, destBuffer) {
+  diffuse(sourceBuffer, destBuffer, viscosity=0.5) {
     const gl = this.gl;
 
-    const viscosity = 0.5;
-    const timeStep = this.deltaTime * 100;
+    const timeStep = this.deltaTime * this.timeScale;
 
     // d_X = (d0_X + viscosity * deltaTime * (d_01 + d_02+ d_03 + d_04)) / (1 + 4 * viscosity * deltaTime)
     //     = (d0_X * 1 / (vis * dT) + (d_01 + d_02+ d_03 + d_04)) * (vis * dT) / (1 + 4 * vis * dT)
@@ -864,7 +862,7 @@ class App {
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
     gl.uniform1f(this.uniformLocations[programId].dissipation, dissipation);
-    gl.uniform1f(this.uniformLocations[programId].deltaTime, this.deltaTime);
+    gl.uniform1f(this.uniformLocations[programId].deltaTime, this.deltaTime * this.timeScale);
     gl.uniform1i(this.uniformLocations[programId].textureToAdvect, 0);
     gl.uniform1i(this.uniformLocations[programId].velocityTexture, 1);
 
@@ -1006,8 +1004,6 @@ class App {
     gl.uniform2fv(this.uniformLocations[programId].currentMouse, [this.inputEvent.x, this.inputEvent.y]);
     gl.uniform1f(this.uniformLocations[programId].effectRadius, effectRadius);
     gl.uniform1f(this.uniformLocations[programId].effectScale, effectScale);
-    gl.uniform1f(this.uniformLocations[programId].deltaTime, this.deltaTime);
-    // Velocity scale uniform removed for float textures
 
     // 4. Bind Attributes
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
@@ -1024,7 +1020,7 @@ class App {
    */
   addDye(sourceBuffer, destBuffer) {
     const effectRadius = 0.02;
-    const effectScale = 0.01;
+    const effectScale = 1;
   
     const gl = this.gl;
     // 1. Use Program
@@ -1132,27 +1128,27 @@ class App {
     }
 
     // --- velocity --- 
-    this.diffuse(this.velocityBuffer, this.velocityBufferTemp);
+    this.diffuse(this.velocityBuffer, this.velocityBufferTemp, 0.9);
     this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
     this.project(this.velocityBuffer, this.velocityBufferTemp);
 
-    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.99);
+    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.998);
     this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
     this.project(this.velocityBufferTemp, this.velocityBuffer);
     
     // this.blit(this.velocityBufferTemp, this.velocityBuffer);
     
     // --- dye ---
-    this.diffuse(this.dyeBuffer, this.dyeBufferTemp, true);
+    this.diffuse(this.dyeBuffer, this.dyeBufferTemp, 0.5);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
     this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
     this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
 
     
     if (this.showVelocity) {
-      this.visualize(this.velocityBuffer, 0, -1, 1);
+      this.visualize(this.velocityBuffer, 0, -0.01, 0.01);
     } else {
-      this.visualize(this.dyeBuffer);
+      this.visualize(this.dyeBuffer, 0, 0, 2);
     }
   }
 }

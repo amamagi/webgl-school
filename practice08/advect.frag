@@ -18,9 +18,10 @@ void main(){
     // sample velocity
     ivec2 coord = ivec2(gl_FragCoord.xy);
     vec2 velocity = texelFetch(u_velocityTexture, coord, 0).xy;
+    vec2 texelSize = 1.0 / u_resolution.xy;
 
     // sample source coord
-    vec2 sourceCoord = gl_FragCoord.xy - velocity * u_deltaTime * 1000.0;
+    vec2 sourceCoord = gl_FragCoord.xy - velocity * u_deltaTime / texelSize;
     vec2 weight = fract(sourceCoord);
     ivec2 baseCoord = ivec2(floor(sourceCoord));
 

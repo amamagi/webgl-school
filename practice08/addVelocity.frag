@@ -14,7 +14,6 @@ uniform vec2 u_currentMouse;  // in [0, 1]
 
 uniform float u_effectRadius;
 uniform float u_effectScale;
-uniform float u_deltaTime;
 
 float sdSegment( in vec2 p, in vec2 a, in vec2 b )
 {
@@ -27,12 +26,13 @@ void main(){
     vec2 uv = gl_FragCoord.xy / u_resolution.xy;
     vec2 currentVelocity = texture(u_bufferTexture, uv).xy;
 
-    vec2 mouseVelocity = normalize((u_currentMouse - u_previousMouse)) / u_deltaTime;
+    vec2 mouseMove = normalize((u_currentMouse - u_previousMouse));
     float distanceToMouse = sdSegment(uv, u_previousMouse, u_currentMouse);
+    vec2 mouseToUv = normalize(uv - u_currentMouse);
 
     // gaussian falloff
     float effect = exp(-distanceToMouse * distanceToMouse / (u_effectRadius * u_effectRadius));
-    vec2 newVelocity = currentVelocity + mouseVelocity * effect * u_effectScale;
+    vec2 newVelocity = currentVelocity + (mouseMove + mouseToUv) * effect * u_effectScale;
 
     // Direct output - no compression needed for float textures
     fragColor = vec4(newVelocity, 0.0, 0.0);
