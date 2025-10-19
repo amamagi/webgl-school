@@ -21,13 +21,12 @@ void main() {
     bool isBottomBoundary = coord.y < range;
     bool isTopBoundary = coord.y >= (resolution.y - range);
 
+    vec2 value = texelFetch(u_bufferTexture, coord, 0).xy;
+
     if (u_dimension == 1){
-        if (!(isLeftBoundary || isRightBoundary || isBottomBoundary || isTopBoundary)) {
-            fragColor = texelFetch(u_bufferTexture, coord, 0);
-            return;
+        if ((isLeftBoundary || isRightBoundary || isBottomBoundary || isTopBoundary)) {
+            value = value * u_boundaryEffects;
         }
-        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy;
-        value = value * u_boundaryEffects;
         fragColor = vec4(value, 0.0, 1.0);
         return;
     }
@@ -35,25 +34,19 @@ void main() {
     // 左右境界
     if (isLeftBoundary || isRightBoundary){
         vec2 normal = isLeftBoundary ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
-        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy; 
-        if (dot(normal, value) < 0.0) {
+        if (dot(normal, normalize(value)) < 0.0) {
             value.x = value.x * u_boundaryEffects;
         }
-        fragColor = vec4(value, 0.0, 1.0);
-        return;
     }
     
     // 上下境界
     if (isTopBoundary || isBottomBoundary){
         vec2 normal = isBottomBoundary ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
-        vec2 value = texelFetch(u_bufferTexture, coord, 0).xy;
-        if (dot(normal, value) < 0.0) {
+        if (dot(normal, normalize(value)) < 0.0) {
             value.y = value.y * u_boundaryEffects;
         }
-        fragColor = vec4(value, 0.0, 1.0);
-        return;
     }
     
     // 内部領域 - そのまま値をコピー
-    fragColor = texelFetch(u_bufferTexture, coord, 0);
+    fragColor = vec4(value, 0.0, 1.0);
 }
