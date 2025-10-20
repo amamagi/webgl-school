@@ -34,7 +34,7 @@ void main() {
     // 左右境界
     if (isLeftBoundary || isRightBoundary){
         vec2 normal = isLeftBoundary ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
-        if (dot(normal, normalize(value)) < 0.0) {
+        if (dot(normal, value) < 0.0) {
             value.x = value.x * u_boundaryEffects;
         }
     }
@@ -42,7 +42,7 @@ void main() {
     // 上下境界
     if (isTopBoundary || isBottomBoundary){
         vec2 normal = isBottomBoundary ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
-        if (dot(normal, normalize(value)) < 0.0) {
+        if (dot(normal, value) < 0.0) {
             value.y = value.y * u_boundaryEffects;
         }
     }

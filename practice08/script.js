@@ -60,8 +60,8 @@ class App {
   preveMouseMoveEvent; // 1フレーム前のマウス移動イベント
   isMouseDown;     // マウスが押されているかどうかのフラグ
   enableLighting = false;    // ライティングを有効にするかどうかのフラグ
-  showVelocity = false;   // 速度場を可視化するかどうかのフラグ
-  timeScale = 100.0;
+  showVelocity = true;   // 速度場を可視化するかどうかのフラグ
+  timeScale = 100;
   deltaTime = 0.01;
   lastFrameTime = 0.0;
 
@@ -983,7 +983,7 @@ class App {
    */
   addVelocity(sourceBuffer, destBuffer) {
     const effectRadius = 0.01;
-    const effectScale = 0.01;
+    const effectScale = 1;
 
     const gl = this.gl;
     // 1. Use Program

@@ -13,11 +13,11 @@ void main(){
     ivec2 coord = ivec2(gl_FragCoord.xy);
     ivec2 resolution = ivec2(u_resolution);
     
-    // 圧力値を取得
-    float pressureLeft = texelFetch(u_pressureTexture, coord - ivec2(1, 0), 0).x;
-    float pressureRight = texelFetch(u_pressureTexture, coord + ivec2(1, 0), 0).x;
-    float pressureBottom = texelFetch(u_pressureTexture, coord - ivec2(0, 1), 0).x;
-    float pressureTop = texelFetch(u_pressureTexture, coord + ivec2(0, 1), 0).x;
+    // 圧力値を取得（境界チェック付き）
+    float pressureLeft = texelFetch(u_pressureTexture, ivec2(max(coord.x - 1, 0), coord.y), 0).x;
+    float pressureRight = texelFetch(u_pressureTexture, ivec2(min(coord.x + 1, resolution.x - 1), coord.y), 0).x;
+    float pressureBottom = texelFetch(u_pressureTexture, ivec2(coord.x, max(coord.y - 1, 0)), 0).x;
+    float pressureTop = texelFetch(u_pressureTexture, ivec2(coord.x, min(coord.y + 1, resolution.y - 1)), 0).x;
 
     // 圧力の勾配を計算（中央差分）
     vec2 gradient = vec2(pressureRight - pressureLeft, pressureTop - pressureBottom) * 0.5;
