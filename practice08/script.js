@@ -22,6 +22,8 @@ class App {
   gl;                // WebGLRenderingContext （WebGL コンテキスト）
   camera;
 
+  canvasScale = 0.5;  // レンダリング解像度のスケール（パフォーマンス調整用）
+
   // --- program ---
   program;           // WebGLProgram （プログラムオブジェクト）
   solverProgram;  // ジャコビ反復計算用のプログラムオブジェクト
@@ -279,8 +281,8 @@ class App {
    * リサイズ処理
    */
   resize() {
-    this.canvas.width  = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    this.canvas.width  = window.innerWidth * this.canvasScale;
+    this.canvas.height = window.innerHeight * this.canvasScale;
   }
 
   /**
