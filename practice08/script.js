@@ -43,7 +43,7 @@ class App {
   planeVBO;          // 板ポリゴンの頂点バッファ
   planeIBO;          // 板ポリゴンのインデックスバッファ
   quadMvpMatrix; // 板ポリゴン描画用の MVP 行列
-  startingTexture; // dyeの初期状態
+  startingTexture; // 初期状態テクスチャ
 
   // --- frame buffer ---
   velocityBuffer; // 速度場 (RG16) (一旦RGBA32)
@@ -60,8 +60,7 @@ class App {
   mouseMoveEvent;     // マウス移動イベント
   preveMouseMoveEvent; // 1フレーム前のマウス移動イベント
   isMouseDown;     // マウスが押されているかどうかのフラグ
-  enableLighting = false;    // ライティングを有効にするかどうかのフラグ
-  showVelocity = true;   // 速度場を可視化するかどうかのフラグ
+  showVelocity = false;   // 速度場を可視化するかどうかのフラグ
   timeScale = 100;
   deltaTime = 0.01;
   lastFrameTime = 0.0;
@@ -244,21 +243,36 @@ class App {
     const pane = new Pane();
     const parameter = {
       // lighting: this.enableLighting,
-      // showVelocity: this.showVelocity
+      showVelocity: this.showVelocity
     };
+
     // テクスチャの初期化
-    pane.addButton({ title: 'Reset' }).on('click', () => {
+    pane.addButton({ title: '速度場をリセット' }).on('click', () => {
       this.initializeBuffer();
     });
+
     // ライティングのON/OFF
     // pane.addBinding(parameter, 'lighting').on('change', (v) => {
     //   this.enableLighting = v.value;
     // });
-    // 速度場の可視化ON/OFF
-    // pane.addBinding(parameter, 'showVelocity').on('change', (v) => {
-    //   this.showVelocity = v.value;
-    // });
 
+    pane.addButton({ title: '画像を選択' }).on('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        const imageBitmap = await createImageBitmap(file);
+        this.startingTexture = WebGLUtility.createTexture(this.gl, imageBitmap);
+      };
+
+      input.click();
+    });
+
+    // 速度場の可視化ON/OFF
+    pane.addBinding(parameter, 'showVelocity').on('change', (v) => {
+      this.showVelocity = v.value;
+    });
   }
 
   /**
@@ -338,7 +352,7 @@ class App {
         const refractFShader = WebGLUtility.createShaderObject(gl, refractFSource, gl.FRAGMENT_SHADER);
         this.refractProgram = WebGLUtility.createProgramObject(gl, refractVShader, refractFShader);
 
-        await WebGLUtility.loadImage('../textures/earth.jpg').then((image) => {
+        await WebGLUtility.loadImage('../textures/ehho.png').then((image) => {
           this.startingTexture = WebGLUtility.createTexture(gl, image);
         });
 
@@ -584,32 +598,33 @@ class App {
     this.tempBufferB = WebGLUtility.createFloatFramebuffer(gl, this.canvas.width, this.canvas.height, 2);
     this.shouldTargetA = true;
 
-    // 各バッファの初期状態を設定
-    {
-      // velocityBuffer の初期化
-      // 1. Use Program
-      const program = this.perlinProgram;
-      gl.useProgram(program);
-
-      // 2. Bind Textures
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-
-      // 3. Bind Uniforms
-      this.bindBasicUniforms(program);
-
-      // 4. Bind Attributes
-      WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
-      
-      // 5. Draw
-      gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
-
-      // 6. Unbind
-      this.unbindTextures();
-    }
-
+    // 各バッファをクリア
     this.clearBuffer(this.velocityBuffer, [0.0, 0.0, 0.0, 0.0]);
     // this.clearBuffer(this.velocityBufferTemp, [0.0, 0.0, 0.0, 0.0]);
+
+    // 各バッファにノイズで初期値を与える
+    {
+      // // velocityBuffer の初期化
+      // // 1. Use Program
+      // const program = this.perlinProgram;
+      // gl.useProgram(program);
+
+      // // 2. Bind Textures
+      // gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
+      // gl.clear(gl.COLOR_BUFFER_BIT);
+
+      // // 3. Bind Uniforms
+      // this.bindBasicUniforms(program);
+
+      // // 4. Bind Attributes
+      // WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
+      
+      // // 5. Draw
+      // gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+
+      // // 6. Unbind
+      // this.unbindTextures();
+    }
 
     {
       // // dyeBuffer の初期化
@@ -1129,13 +1144,10 @@ class App {
     // this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
     // this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
 
-
-    this.refract(this.velocityBuffer, this.startingTexture);
-    
-    // if (this.showVelocity) {
-    //   this.visualize(this.velocityBuffer, 0, -0.01, 0.01);
-    // } else {
-    //   this.visualize(this.dyeBuffer, 0, 0, 2);
-    // }
+    if (this.showVelocity) {
+      this.visualize(this.velocityBuffer, 0, -0.01, 0.01);
+    } else {
+      this.refract(this.velocityBuffer, this.startingTexture);
+    }
   }
 }
