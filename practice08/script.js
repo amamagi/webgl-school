@@ -33,6 +33,7 @@ class App {
   boundaryProgram; // 境界条件処理用のプログラムオブジェクト
   addVelocityProgram; // 速度場に外力を加えるプログラムオブジェクト
   addDyeProgram; // 染料場に外力を加えるプログラムオブジェクト
+  refractProgram; // 屈折表示用のプログラムオブジェクト
 
   // --- attribute, uniform ---
   attributeLocation; // attribute 変数のロケーション
@@ -243,7 +244,7 @@ class App {
     const pane = new Pane();
     const parameter = {
       // lighting: this.enableLighting,
-      showVelocity: this.showVelocity
+      // showVelocity: this.showVelocity
     };
     // テクスチャの初期化
     pane.addButton({ title: 'Reset' }).on('click', () => {
@@ -254,9 +255,9 @@ class App {
     //   this.enableLighting = v.value;
     // });
     // 速度場の可視化ON/OFF
-    pane.addBinding(parameter, 'showVelocity').on('change', (v) => {
-      this.showVelocity = v.value;
-    });
+    // pane.addBinding(parameter, 'showVelocity').on('change', (v) => {
+    //   this.showVelocity = v.value;
+    // });
 
   }
 
@@ -332,6 +333,10 @@ class App {
         const addDyeFShader = WebGLUtility.createShaderObject(gl, addDyeFSource, gl.FRAGMENT_SHADER);
         this.addDyeProgram = WebGLUtility.createProgramObject(gl, addDyeVShader, addDyeFShader);
 
+        const refractFSource = await WebGLUtility.loadFile('./refract.frag');
+        const refractVShader = WebGLUtility.createShaderObject(gl, VSSource, gl.VERTEX_SHADER);
+        const refractFShader = WebGLUtility.createShaderObject(gl, refractFSource, gl.FRAGMENT_SHADER);
+        this.refractProgram = WebGLUtility.createProgramObject(gl, refractVShader, refractFShader);
 
         await WebGLUtility.loadImage('../textures/earth.jpg').then((image) => {
           this.startingTexture = WebGLUtility.createTexture(gl, image);
@@ -373,6 +378,7 @@ class App {
     if (program === this.boundaryProgram) return 'boundary';
     if (program === this.addVelocityProgram) return 'addVelocity';
     if (program === this.addDyeProgram) return 'addDye';
+    if (program === this.refractProgram) return 'refract';
     return null;
   }
 
@@ -391,7 +397,7 @@ class App {
     // --- uniform ---
     // uniform location の取得
     for (let program of [this.program, this.perlinProgram, this.advectionProgram, this.solverProgram, this.blitProgram, 
-      this.divergentProgram, this.getDivFreeProgram, this.boundaryProgram, this.addVelocityProgram, this.addDyeProgram]) {
+      this.divergentProgram, this.getDivFreeProgram, this.boundaryProgram, this.addVelocityProgram, this.addDyeProgram, this.refractProgram]) {
       this.uniformLocations[this.getProgramId(program)] = {
         time: gl.getUniformLocation(program, 'u_time'),
         resolution: gl.getUniformLocation(program, 'u_resolution'),
@@ -447,6 +453,10 @@ class App {
       currentMouse: gl.getUniformLocation(this.addDyeProgram, 'u_currentMouse'),
       effectRadius: gl.getUniformLocation(this.addDyeProgram, 'u_effectRadius'),
       effectScale: gl.getUniformLocation(this.addDyeProgram, 'u_effectScale'),
+    });
+    Object.assign(this.uniformLocations[this.getProgramId(this.refractProgram)], {
+      velocityTexture: gl.getUniformLocation(this.refractProgram, 'u_velocityTexture'),
+      colorTexture: gl.getUniformLocation(this.refractProgram, 'u_colorTexture'),
     });
   }
 
@@ -576,26 +586,26 @@ class App {
 
     // 各バッファの初期状態を設定
     {
-      // // velocityBuffer の初期化
-      // // 1. Use Program
-      // const program = this.perlinProgram;
-      // gl.useProgram(program);
+      // velocityBuffer の初期化
+      // 1. Use Program
+      const program = this.perlinProgram;
+      gl.useProgram(program);
 
-      // // 2. Bind Textures
-      // gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
-      // gl.clear(gl.COLOR_BUFFER_BIT);
+      // 2. Bind Textures
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
+      gl.clear(gl.COLOR_BUFFER_BIT);
 
-      // // 3. Bind Uniforms
-      // this.bindBasicUniforms(program);
+      // 3. Bind Uniforms
+      this.bindBasicUniforms(program);
 
-      // // 4. Bind Attributes
-      // WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
+      // 4. Bind Attributes
+      WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
       
-      // // 5. Draw
-      // gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
+      // 5. Draw
+      gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
 
-      // // 6. Unbind
-      // this.unbindTextures();
+      // 6. Unbind
+      this.unbindTextures();
     }
 
     this.clearBuffer(this.velocityBuffer, [0.0, 0.0, 0.0, 0.0]);
@@ -1057,36 +1067,12 @@ class App {
     WebGLUtility.deleteFramebuffer(gl, buffer.framebuffer, buffer.depthRenderBuffer, buffer.texture);
     return WebGLUtility.createFramebuffer(gl, this.canvas.width, this.canvas.height);
   }
-
-  tmp(){
-    const gl = this.gl;
-      // velocityBuffer の初期化
-      // 1. Use Program
-      const program = this.perlinProgram;
-      gl.useProgram(program);
-
-      // 2. Bind Textures
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.velocityBuffer.framebuffer);
-      this.setupRendering();
-
-      // 3. Bind Uniforms
-      this.bindBasicUniforms(program);
-
-      // 4. Bind Attributes
-      WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
-      
-      // 5. Draw
-      gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
-
-      // 6. Unbind
-      this.unbindTextures();
-  }
-
-  tmp2(buffer){
+  
+  refract(velocityBuffer, colorTexture) {
     const gl = this.gl;
 
     // 1. Use Program
-    const program = this.program;
+    const program = this.refractProgram;
     const programId = this.getProgramId(program);
     gl.useProgram(program);
 
@@ -1094,25 +1080,24 @@ class App {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, buffer.texture);
+    gl.bindTexture(gl.TEXTURE_2D, velocityBuffer.texture);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
 
     // 3. Bind Uniforms
     this.bindBasicUniforms(program);
-    gl.uniform1i(this.uniformLocations[programId].floatTexture, 0);
-    gl.uniform1i(this.uniformLocations[programId].visualizationMode, 0);
-    gl.uniform1f(this.uniformLocations[programId].minValue, -1);
-    gl.uniform1f(this.uniformLocations[programId].maxValue, 1);
+    gl.uniform1i(this.uniformLocations[programId].velocityTexture, 0);
+    gl.uniform1i(this.uniformLocations[programId].colorTexture, 1);
 
     // 4. Bind Attribute
     WebGLUtility.enableBuffer(gl, this.planeVBO, this.attributeLocation, this.attributeStride, this.planeIBO);
 
     // 5. Draw
     gl.drawElements(gl.TRIANGLES, this.planeGeometry.index.length, gl.UNSIGNED_SHORT, 0);
-
+   
     // 6. Unbind
     this.unbindTextures();
   }
-
   /**
    * レンダリングを行う
    */
@@ -1139,16 +1124,18 @@ class App {
     // this.blit(this.velocityBufferTemp, this.velocityBuffer);
     
     // --- dye ---
-    this.diffuse(this.dyeBuffer, this.dyeBufferTemp, 0.5);
-    this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
-    this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
-    this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
+    // this.diffuse(this.dyeBuffer, this.dyeBufferTemp, 0.5);
+    // this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
+    // this.advect(this.dyeBuffer, this.velocityBuffer, this.dyeBufferTemp, 0.998);
+    // this.handleBoundary(this.dyeBufferTemp, this.dyeBuffer, 0.0, true);
 
+
+    this.refract(this.velocityBuffer, this.startingTexture);
     
-    if (this.showVelocity) {
-      this.visualize(this.velocityBuffer, 0, -0.01, 0.01);
-    } else {
-      this.visualize(this.dyeBuffer, 0, 0, 2);
-    }
+    // if (this.showVelocity) {
+    //   this.visualize(this.velocityBuffer, 0, -0.01, 0.01);
+    // } else {
+    //   this.visualize(this.dyeBuffer, 0, 0, 2);
+    // }
   }
 }
