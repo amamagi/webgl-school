@@ -70,7 +70,7 @@ class App {
   // 統合された入力管理用プロパティ
   inputEvent;       // 現在の入力位置（マウスまたはタッチ）
   prevInputEvent;   // 1フレーム前の入力位置
-  isInputActive;    // 入力が有効かどうかのフラグ（マウス押下またはタッチ中）
+  isInputActive = true;    // 入力が有効かどうかのフラグ（マウス押下またはタッチ中）
 
   constructor() {
     // this を固定するためのバインド処理
@@ -193,9 +193,9 @@ class App {
    * マウス離上処理
    */
   handleMouseUp(e) {
-    this.isInputActive = false;
-    this.inputEvent = null;
-    this.prevInputEvent = null;
+    // this.isInputActive = false;
+    // this.inputEvent = null;
+    // this.prevInputEvent = null;
   }
 
   /**
