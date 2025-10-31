@@ -354,7 +354,7 @@ class App {
         const refractFShader = WebGLUtility.createShaderObject(gl, refractFSource, gl.FRAGMENT_SHADER);
         this.refractProgram = WebGLUtility.createProgramObject(gl, refractVShader, refractFShader);
 
-        await WebGLUtility.loadImage('../textures/ehho.png').then((image) => {
+        await WebGLUtility.loadImage('https://picsum.photos/' + this.canvas.width + '/' + this.canvas.height).then((image) => {
           this.startingTexture = WebGLUtility.createTexture(gl, image);
         });
 
