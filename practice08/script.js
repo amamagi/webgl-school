@@ -710,7 +710,7 @@ class App {
     let programId = this.getProgramId(program);
     gl.useProgram(program);
 
-    const itter = 30;
+    const itter = 15;
     for (let i = 0; i < itter; i++) {
       // 2. Bind Textures
       const target = i == (itter - 1) ? destBuffer 
@@ -762,7 +762,7 @@ class App {
     // --- Jacobi 反復計算を行う ---
     // p_new[i, j] = ((p[i+1,j] + p[i,j+1] + p[i-1,j] + p[i,j-1]) - Velocity_Divergence[i,j])/4
 
-    const itter = 30;
+    const itter = 15;
     let newdPressureBuffer;
     for (let i = 0; i < itter; i++) {
       // this.shouldTargetA = !this.shouldTargetA;
@@ -972,7 +972,7 @@ class App {
    * ユーザー入力処理
    */
   handleUserInput(velocitySourceBuffer, velocityDestBuffer, dyeSourceBuffer, dyeDestBuffer) {
-    const activateDistance = 0.01;
+    const activateDistance = 0.001;
     
     // 入力がない場合はスキップ
     if (!this.inputEvent || !this.isInputActive) {
@@ -995,6 +995,13 @@ class App {
       return false;
     }
 
+    // 画面端の場合はスキップ
+    const margin = 0.05;
+    if (this.inputEvent.x < margin || this.inputEvent.x > (1.0 - margin) ||
+        this.inputEvent.y < margin || this.inputEvent.y > (1.0 - margin)) {
+      return false;
+    }
+
     // velocityとdyeを追加
     this.addVelocity(velocitySourceBuffer, velocityDestBuffer);
     this.addDye(dyeSourceBuffer, dyeDestBuffer);
@@ -1009,8 +1016,8 @@ class App {
    * velocity追加処理
    */
   addVelocity(sourceBuffer, destBuffer) {
-    const effectRadius = 0.01;
-    const effectScale = 1;
+    const effectRadius = 0.001;
+    const effectScale = 0.05;
 
     const gl = this.gl;
     // 1. Use Program
@@ -1130,11 +1137,11 @@ class App {
     }
 
     // --- velocity --- 
-    this.diffuse(this.velocityBuffer, this.velocityBufferTemp, 0.9);
+    this.diffuse(this.velocityBuffer, this.velocityBufferTemp, 0.1);
     this.handleBoundary(this.velocityBufferTemp, this.velocityBuffer, -1.0);
     this.project(this.velocityBuffer, this.velocityBufferTemp);
 
-    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.998);
+    this.advect(this.velocityBufferTemp, this.velocityBufferTemp, this.velocityBuffer, 0.9998);
     this.handleBoundary(this.velocityBuffer, this.velocityBufferTemp, -1.0);
     this.project(this.velocityBufferTemp, this.velocityBuffer);
     

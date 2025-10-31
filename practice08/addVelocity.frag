@@ -30,9 +30,10 @@ void main(){
     float distanceToMouse = sdSegment(uv, u_previousMouse, u_currentMouse);
     vec2 mouseToUv = normalize(uv - u_currentMouse);
 
+
     // gaussian falloff
-    float effect = exp(-distanceToMouse * distanceToMouse / (u_effectRadius * u_effectRadius));
-    vec2 newVelocity = currentVelocity + (mouseMove + mouseToUv) * effect * u_effectScale;
+    float effect = exp(- pow(2.0 * distanceToMouse, 2.0) / u_effectRadius) ;
+    vec2 newVelocity = currentVelocity + (mouseMove * 0.5 + mouseToUv * 0.5) * effect * u_effectScale;
 
     // Direct output - no compression needed for float textures
     fragColor = vec4(newVelocity, 0.0, 0.0);
